@@ -16,8 +16,10 @@ struct BulkEntry {
     url: String,
 }
 
+// TODO: Think of a way to do colors
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ScryfallCard {
+    // Card / Card Face (Double-sided cards) + others
     object: Option<String>,
     color_indicator: Option<Vec<String>>,
     produced_mana: Option<Vec<String>>,
@@ -63,10 +65,12 @@ pub struct ScryfallCard {
     digital: Option<bool>,
     set: Option<String>,
     name: Option<String>,
+    // Things like Flying, Hexproof etc.
     keywords: Option<Vec<String>>,
     highres_image: Option<bool>,
     mana_cost: Option<String>,
     // DB Table: Image URIs - Card ID as FK
+    // TODO: Need Unique keys
     image_uris: Option<HashMap<String, String>>,
     games: Option<Vec<String>>,
     promo: Option<bool>,
@@ -88,11 +92,11 @@ async fn download_data<T: serde::de::DeserializeOwned>(url: &str) -> Result<T> {
 
 // TODO: Better Filtering?
 fn filter_cards(cards: Vec<ScryfallCard>) -> Vec<ScryfallCard> {
-    let invalid = |card: &ScryfallCard| {
+    let valid = |card: &ScryfallCard| {
         match card.set_type {
             Some(ref st) => {
                 if st == "vanguard" {
-                    return true;
+                    return false;
                 }
             }
             None => {}
@@ -101,24 +105,18 @@ fn filter_cards(cards: Vec<ScryfallCard>) -> Vec<ScryfallCard> {
         match card.set_name {
             Some(ref sn) => {
                 if sn.contains("Mystery Booster Playtest") {
-                    return true;
+                    return false;
                 }
             }
             None => {}
         }
 
-        false
+        true
     };
 
     cards
         .into_iter()
-        .filter_map(|c| {
-            if !invalid(&c) {
-                return Some(c);
-            }
-
-            None
-        })
+        .filter(valid)
         .collect::<Vec<ScryfallCard>>()
 }
 
