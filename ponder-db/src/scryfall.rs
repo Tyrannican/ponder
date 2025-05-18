@@ -1,4 +1,4 @@
-use color_eyre::Result;
+use anyhow::Result;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf};
@@ -25,6 +25,9 @@ pub struct ScryfallCard {
     produced_mana: Option<Vec<String>>,
     loyalty: Option<String>,
     // DB Table: Legalities - Card ID as FK
+    // "paupercommander", "penny", "legacy", "historic", "predh", "future", "alchemy",
+    // "oathbreaker", "pioneer", "timeless", "pauper", "commander", "vintage", "premodern", "gladiator",
+    // "standardbrawl", "duel", "oldschool", "modern", "explorer", "brawl", "standard"
     legalities: Option<HashMap<String, String>>,
     artist: Option<String>,
     oracle_id: Option<String>,
@@ -51,6 +54,7 @@ pub struct ScryfallCard {
     set_id: Option<String>,
     toughness: Option<String>,
     mtgo_id: Option<i32>,
+    // Potential Colours / Mana: WUBRGCT
     colors: Option<Vec<String>>,
     booster: Option<bool>,
     border_color: Option<String>,
@@ -70,8 +74,9 @@ pub struct ScryfallCard {
     highres_image: Option<bool>,
     mana_cost: Option<String>,
     // DB Table: Image URIs - Card ID as FK
-    // TODO: Need Unique keys
+    // "large", "small", "art_crop", "normal", "border_crop", "png"
     image_uris: Option<HashMap<String, String>>,
+    // "mtgo", "paper", "arena"
     games: Option<Vec<String>>,
     promo: Option<bool>,
 }
@@ -93,22 +98,22 @@ async fn download_data<T: serde::de::DeserializeOwned>(url: &str) -> Result<T> {
 // TODO: Better Filtering?
 fn filter_cards(cards: Vec<ScryfallCard>) -> Vec<ScryfallCard> {
     let valid = |card: &ScryfallCard| {
-        match card.set_type {
-            Some(ref st) => {
-                if st == "vanguard" {
-                    return false;
-                }
+        if let Some(ref st) = card.set_type {
+            if st == "vanguard" {
+                return false;
             }
-            None => {}
         }
 
-        match card.set_name {
-            Some(ref sn) => {
-                if sn.contains("Mystery Booster Playtest") {
-                    return false;
-                }
+        if let Some(ref sn) = card.set_name {
+            if sn.contains("Mystery Booster Playtest") {
+                return false;
             }
-            None => {}
+        }
+
+        if let Some(ref g) = card.games {
+            if g.contains(&"sega".to_string()) || g.contains(&"astral".to_string()) {
+                return false;
+            }
         }
 
         true

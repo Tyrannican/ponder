@@ -1,13 +1,10 @@
 use color_eyre::Result;
 
-mod scryfall;
-use scryfall::download;
-
 #[tokio::main]
 async fn main() -> Result<()> {
-    download().await?;
     Ok(())
 }
+
 // use color_eyre::Result;
 // use crossterm::event::{self, Event};
 // use ratatui::layout::{Alignment, Constraint, Layout, Rect};
