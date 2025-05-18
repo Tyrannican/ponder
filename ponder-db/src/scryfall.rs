@@ -16,27 +16,21 @@ struct BulkEntry {
     url: String,
 }
 
-// TODO: Think of a way to do colors
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ScryfallCard {
-    // Card / Card Face (Double-sided cards) + others
+    id: Option<String>,
     object: Option<String>,
+    name: Option<String>,
     color_indicator: Option<Vec<String>>,
     produced_mana: Option<Vec<String>>,
     loyalty: Option<String>,
-    // DB Table: Legalities - Card ID as FK
-    // "paupercommander", "penny", "legacy", "historic", "predh", "future", "alchemy",
-    // "oathbreaker", "pioneer", "timeless", "pauper", "commander", "vintage", "premodern", "gladiator",
-    // "standardbrawl", "duel", "oldschool", "modern", "explorer", "brawl", "standard"
     legalities: Option<HashMap<String, String>>,
     artist: Option<String>,
     oracle_id: Option<String>,
     // This will need split into types (Legendary Creature - Elf Druid etc.)
     type_line: Option<String>,
     lang: Option<String>,
-    // Double-face cards and such, treat the faces as separate cards
     card_faces: Option<Vec<ScryfallCard>>,
-    // For racist stuff
     content_warning: Option<bool>,
     cmc: Option<f32>,
     image_status: Option<String>,
@@ -49,7 +43,6 @@ pub struct ScryfallCard {
     power: Option<String>,
     set_name: Option<String>,
     penny_rank: Option<i32>,
-    id: Option<String>,
     variation: Option<bool>,
     set_id: Option<String>,
     toughness: Option<String>,
@@ -61,22 +54,16 @@ pub struct ScryfallCard {
     foil: Option<bool>,
     set_type: Option<String>,
     nonfoil: Option<bool>,
-    // Commander only: OP cards
     game_changer: Option<bool>,
     reprint: Option<bool>,
     layout: Option<String>,
     reserved: Option<bool>,
     digital: Option<bool>,
     set: Option<String>,
-    name: Option<String>,
-    // Things like Flying, Hexproof etc.
     keywords: Option<Vec<String>>,
     highres_image: Option<bool>,
     mana_cost: Option<String>,
-    // DB Table: Image URIs - Card ID as FK
-    // "large", "small", "art_crop", "normal", "border_crop", "png"
     image_uris: Option<HashMap<String, String>>,
-    // "mtgo", "paper", "arena"
     games: Option<Vec<String>>,
     promo: Option<bool>,
 }
@@ -141,4 +128,15 @@ pub async fn download() -> Result<Vec<ScryfallCard>> {
     };
 
     Ok(cards)
+}
+
+#[cfg(test)]
+mod scryfall_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn checker() -> anyhow::Result<()> {
+        let cards = download().await?;
+        Ok(())
+    }
 }
