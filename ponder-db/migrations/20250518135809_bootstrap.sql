@@ -17,7 +17,7 @@ create table if not exists card (
     oracle_text text,
     color_identity text,
     rarity text,
-    type text,
+    card_type text,
     subtype text,
     legendary boolean,
     power integer,
@@ -25,7 +25,7 @@ create table if not exists card (
     set_name text,
     set_id text,
     set_type text,
-    set text,
+    set_short text,
     penny_rank text,
     variation boolean,
     mtgo_id integer,
@@ -47,7 +47,7 @@ create table if not exists card (
 );
 
 create table if not exists images (
-    card_id text not null
+    card_id text not null,
     large text,
     small text,
     art_crop text,

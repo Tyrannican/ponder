@@ -18,54 +18,53 @@ struct BulkEntry {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ScryfallCard {
-    id: Option<String>,
-    object: Option<String>,
-    name: Option<String>,
-    color_indicator: Option<Vec<String>>,
-    produced_mana: Option<Vec<String>>,
-    loyalty: Option<String>,
-    legalities: Option<HashMap<String, String>>,
-    artist: Option<String>,
-    oracle_id: Option<String>,
-    // This will need split into types (Legendary Creature - Elf Druid etc.)
-    type_line: Option<String>,
-    lang: Option<String>,
-    card_faces: Option<Vec<ScryfallCard>>,
-    content_warning: Option<bool>,
-    cmc: Option<f32>,
-    image_status: Option<String>,
-    flavor_text: Option<String>,
-    arena_id: Option<i32>,
-    illustration_id: Option<String>,
-    oracle_text: Option<String>,
-    color_identity: Option<Vec<String>>,
-    rarity: Option<String>,
-    power: Option<String>,
-    set_name: Option<String>,
-    penny_rank: Option<i32>,
-    variation: Option<bool>,
-    set_id: Option<String>,
-    toughness: Option<String>,
-    mtgo_id: Option<i32>,
-    // Potential Colours / Mana: WUBRGCT
-    colors: Option<Vec<String>>,
-    booster: Option<bool>,
-    border_color: Option<String>,
-    foil: Option<bool>,
-    set_type: Option<String>,
-    nonfoil: Option<bool>,
-    game_changer: Option<bool>,
-    reprint: Option<bool>,
-    layout: Option<String>,
-    reserved: Option<bool>,
-    digital: Option<bool>,
-    set: Option<String>,
-    keywords: Option<Vec<String>>,
-    highres_image: Option<bool>,
-    mana_cost: Option<String>,
-    image_uris: Option<HashMap<String, String>>,
-    games: Option<Vec<String>>,
-    promo: Option<bool>,
+    pub(crate) id: Option<String>,
+    pub(crate) object: Option<String>,
+    pub(crate) name: Option<String>,
+    pub(crate) color_indicator: Option<Vec<String>>,
+    pub(crate) produced_mana: Option<Vec<String>>,
+    pub(crate) loyalty: Option<String>,
+    pub(crate) legalities: Option<HashMap<String, String>>,
+    pub(crate) artist: Option<String>,
+    pub(crate) oracle_id: Option<String>,
+    pub(crate) type_line: Option<String>,
+    pub(crate) defense: Option<String>,
+    pub(crate) lang: Option<String>,
+    pub(crate) card_faces: Option<Vec<ScryfallCard>>,
+    pub(crate) content_warning: Option<bool>,
+    pub(crate) cmc: Option<f32>,
+    pub(crate) image_status: Option<String>,
+    pub(crate) flavor_text: Option<String>,
+    pub(crate) arena_id: Option<i32>,
+    pub(crate) illustration_id: Option<String>,
+    pub(crate) oracle_text: Option<String>,
+    pub(crate) color_identity: Option<Vec<String>>,
+    pub(crate) rarity: Option<String>,
+    pub(crate) power: Option<String>,
+    pub(crate) set_name: Option<String>,
+    pub(crate) penny_rank: Option<i32>,
+    pub(crate) variation: Option<bool>,
+    pub(crate) set_id: Option<String>,
+    pub(crate) toughness: Option<String>,
+    pub(crate) mtgo_id: Option<i32>,
+    pub(crate) colors: Option<Vec<String>>,
+    pub(crate) booster: Option<bool>,
+    pub(crate) border_color: Option<String>,
+    pub(crate) foil: Option<bool>,
+    pub(crate) set_type: Option<String>,
+    pub(crate) nonfoil: Option<bool>,
+    pub(crate) game_changer: Option<bool>,
+    pub(crate) reprint: Option<bool>,
+    pub(crate) layout: Option<String>,
+    pub(crate) reserved: Option<bool>,
+    pub(crate) digital: Option<bool>,
+    pub(crate) set: Option<String>,
+    pub(crate) keywords: Option<Vec<String>>,
+    pub(crate) highres_image: Option<bool>,
+    pub(crate) mana_cost: Option<String>,
+    pub(crate) image_uris: Option<HashMap<String, String>>,
+    pub(crate) games: Option<Vec<String>>,
+    pub(crate) promo: Option<bool>,
 }
 
 async fn download_data<T: serde::de::DeserializeOwned>(url: &str) -> Result<T> {
@@ -112,7 +111,7 @@ fn filter_cards(cards: Vec<ScryfallCard>) -> Vec<ScryfallCard> {
         .collect::<Vec<ScryfallCard>>()
 }
 
-pub async fn download() -> Result<Vec<ScryfallCard>> {
+pub async fn download_latest() -> Result<Vec<ScryfallCard>> {
     // TODO: Temp
     let card_file = PathBuf::from("cards.json");
     let cards = if card_file.exists() {
@@ -136,7 +135,7 @@ mod scryfall_tests {
 
     #[tokio::test]
     async fn checker() -> anyhow::Result<()> {
-        let cards = download().await?;
+        let cards = download_latest().await?;
         Ok(())
     }
 }

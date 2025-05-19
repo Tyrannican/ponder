@@ -1,8 +1,14 @@
 use anyhow::{Context, Result};
+use card::Card;
+use scryfall::ScryfallCard;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 
-use std::{path::PathBuf, str::FromStr};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
+mod card;
 mod scryfall;
 
 #[derive(Debug, Clone)]
@@ -11,7 +17,7 @@ pub struct SqliteStore {
 }
 
 impl SqliteStore {
-    pub(crate) async fn load(ws: PathBuf) -> Result<Self> {
+    pub async fn load(ws: impl AsRef<Path>) -> Result<Self> {
         let lead = PathBuf::from("sqlite:/");
         let db_name = lead.join(ws).join("ponder.db");
 
@@ -27,6 +33,8 @@ impl SqliteStore {
             .context("creating database")?;
 
         Self::setup_db(&pool).await?;
+        let cards = scryfall::download_latest().await?;
+        Self::init(cards);
         Ok(Self { pool })
     }
 
@@ -37,5 +45,11 @@ impl SqliteStore {
             .context("running database migrations")?;
 
         Ok(())
+    }
+
+    fn init(cards: Vec<ScryfallCard>) {
+        for card in cards.into_iter() {
+            Card::from_scryfall(card);
+        }
     }
 }
