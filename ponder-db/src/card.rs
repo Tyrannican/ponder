@@ -60,13 +60,14 @@ impl Card {
                 .collect::<Vec<Card>>();
         }
 
-        if let Some(ref object) = card.object {
-            if object.contains("card_face") {
-                println!("{:?}", card);
-                println!();
-            } else {
-                // println!("{type_line} - ({})", card.name.unwrap());
+        let mut new_card = Self::default();
+        if let Some(type_line) = card.type_line {
+            // Some cards are just art etc.
+            if type_line == "Card" {
+                return Vec::new();
             }
+
+            // TODO: Split `type_line` into sub-types and super-types
         }
 
         vec![Self::default()]
