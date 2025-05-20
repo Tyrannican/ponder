@@ -67,7 +67,15 @@ impl Card {
                 return Vec::new();
             }
 
-            // TODO: Split `type_line` into sub-types and super-types
+            let Some((split, rest)) = type_line.split_once(" — ") else {
+                // println!("{type_line}");
+                return Vec::new();
+            };
+
+            let inner = split.split(" ").collect::<Vec<&str>>();
+            if inner.len() > 1 {
+                println!("{inner:?}");
+            }
         }
 
         vec![Self::default()]

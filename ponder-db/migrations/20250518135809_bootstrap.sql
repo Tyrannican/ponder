@@ -17,9 +17,6 @@ create table if not exists card (
     oracle_text text,
     color_identity text,
     rarity text,
-    card_type text,
-    subtype text,
-    legendary boolean,
     power integer,
     toughness integer,
     set_name text,
@@ -46,41 +43,72 @@ create table if not exists card (
     promo boolean
 );
 
-create table if not exists images (
-    card_id text not null,
-    large text,
-    small text,
-    art_crop text,
-    normal text,
-    border_crop text,
-    foreign key (card_id) references card(id)
+create table if not exists image_type (
+    id integer primary key,
+    name text not null unique
 );
 
-create table if not exists legalities (
+
+create table if not exists images (
     card_id text not null,
-    standard boolean,
-    pioneer boolean,
-    modern boolean,
-    premodern boolean,
-    legacy boolean,
-    vintage boolean,
-    commander boolean,
-    pauper boolean,
-    paupercommander boolean,
-    penny boolean,
-    historic boolean,
-    predh boolean,
-    future boolean,
-    alchemy boolean,
-    oathbreaker boolean,
-    timeless boolean,
-    gladiator boolean,
-    standardbrawl boolean,
-    duel boolean,
-    oldschool boolean,
-    explorer boolean,
-    brawl boolean,
-    foreign key (card_id) references card(id)
+    image_type_id integer not null,
+    uri text not null,
+    primary key (card_id, image_type_id),
+    foreign key (card_id) references card(id),
+    foreign key (image_type_id) references image_type(id)
 );
+
+create table if not exists mtg_type (
+    id integer primary key,
+    name text not null unique
+);
+
+create table if not exists card_type_map (
+    card_id text not null,
+    type_id integer not null,
+    primary key (card_id, type_id),
+    foreign key (card_id) references card(id),
+    foreign key (type_id) references mtg_type(id)
+);
+
+create table if not exists format (
+    id integer primary key,
+    name text not null unique
+);
+
+create table if not exists legality (
+    card_id text not null,
+    format_id integer not null,
+    is_legal boolean not null,
+    primary key (card_id, format_id),
+    foreign key (card_id) references card(id),
+    foreign key (format_id) references format(id),
+);
+-- create table if not exists legalities (
+--     card_id text not null,
+--     standard boolean,
+--     pioneer boolean,
+--     modern boolean,
+--     premodern boolean,
+--     legacy boolean,
+--     vintage boolean,
+--     commander boolean,
+--     pauper boolean,
+--     paupercommander boolean,
+--     penny boolean,
+--     historic boolean,
+--     predh boolean,
+--     future boolean,
+--     alchemy boolean,
+--     oathbreaker boolean,
+--     timeless boolean,
+--     gladiator boolean,
+--     standardbrawl boolean,
+--     duel boolean,
+--     oldschool boolean,
+--     explorer boolean,
+--     brawl boolean,
+--     foreign key (card_id) references card(id)
+-- );
 
 create index if not exists idx_card on card(id);

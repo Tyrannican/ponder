@@ -11,6 +11,30 @@ use std::{
 mod card;
 mod scryfall;
 
+// create table if not exists legalities (
+//     standard boolean,
+//     pioneer boolean,
+//     modern boolean,
+//     premodern boolean,
+//     legacy boolean,
+//     vintage boolean,
+//     commander boolean,
+//     pauper boolean,
+//     paupercommander boolean,
+//     penny boolean,
+//     historic boolean,
+//     predh boolean,
+//     future boolean,
+//     alchemy boolean,
+//     oathbreaker boolean,
+//     timeless boolean,
+//     gladiator boolean,
+//     standardbrawl boolean,
+//     duel boolean,
+//     oldschool boolean,
+//     explorer boolean,
+//     brawl boolean,
+// );
 #[derive(Debug, Clone)]
 pub struct SqliteStore {
     pool: SqlitePool,
