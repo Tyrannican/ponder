@@ -82,33 +82,7 @@ create table if not exists legality (
     is_legal boolean not null,
     primary key (card_id, format_id),
     foreign key (card_id) references card(id),
-    foreign key (format_id) references format(id),
+    foreign key (format_id) references format(id)
 );
--- create table if not exists legalities (
---     card_id text not null,
---     standard boolean,
---     pioneer boolean,
---     modern boolean,
---     premodern boolean,
---     legacy boolean,
---     vintage boolean,
---     commander boolean,
---     pauper boolean,
---     paupercommander boolean,
---     penny boolean,
---     historic boolean,
---     predh boolean,
---     future boolean,
---     alchemy boolean,
---     oathbreaker boolean,
---     timeless boolean,
---     gladiator boolean,
---     standardbrawl boolean,
---     duel boolean,
---     oldschool boolean,
---     explorer boolean,
---     brawl boolean,
---     foreign key (card_id) references card(id)
--- );
 
 create index if not exists idx_card on card(id);
