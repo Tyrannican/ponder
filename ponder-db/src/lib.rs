@@ -12,30 +12,6 @@ use std::{
 mod card;
 mod scryfall;
 
-// create table if not exists legalities (
-//     standard boolean,
-//     pioneer boolean,
-//     modern boolean,
-//     premodern boolean,
-//     legacy boolean,
-//     vintage boolean,
-//     commander boolean,
-//     pauper boolean,
-//     paupercommander boolean,
-//     penny boolean,
-//     historic boolean,
-//     predh boolean,
-//     future boolean,
-//     alchemy boolean,
-//     oathbreaker boolean,
-//     timeless boolean,
-//     gladiator boolean,
-//     standardbrawl boolean,
-//     duel boolean,
-//     oldschool boolean,
-//     explorer boolean,
-//     brawl boolean,
-// );
 #[derive(Debug, Clone)]
 pub struct SqliteStore {
     pool: SqlitePool,
@@ -59,7 +35,6 @@ impl SqliteStore {
 
         Self::setup_db(&pool).await?;
         let cards = scryfall::download_latest().await?;
-        Self::init(cards);
         Ok(Self { pool })
     }
 
@@ -70,16 +45,5 @@ impl SqliteStore {
             .context("running database migrations")?;
 
         Ok(())
-    }
-
-    fn init(cards: Vec<ScryfallCard>) {
-        let mut hs = HashSet::new();
-        for card in cards.into_iter() {
-            Card::from_scryfall(card, &mut hs);
-        }
-
-        for item in hs.iter() {
-            println!("{item}");
-        }
     }
 }
