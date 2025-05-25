@@ -4,6 +4,7 @@ use scryfall::ScryfallCard;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 
 use std::{
+    collections::HashSet,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -72,8 +73,13 @@ impl SqliteStore {
     }
 
     fn init(cards: Vec<ScryfallCard>) {
+        let mut hs = HashSet::new();
         for card in cards.into_iter() {
-            Card::from_scryfall(card);
+            Card::from_scryfall(card, &mut hs);
+        }
+
+        for item in hs.iter() {
+            println!("{item}");
         }
     }
 }

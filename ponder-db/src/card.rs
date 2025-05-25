@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::ScryfallCard;
 use sqlx::FromRow;
 
@@ -51,11 +53,11 @@ pub struct Card {
 }
 
 impl Card {
-    pub fn from_scryfall(card: ScryfallCard) -> Vec<Card> {
+    pub fn from_scryfall(card: ScryfallCard, hs: &mut HashSet<String>) -> Vec<Card> {
         if let Some(card_faces) = card.card_faces {
             return card_faces
                 .into_iter()
-                .map(|c| Self::from_scryfall(c))
+                .map(|c| Self::from_scryfall(c, hs))
                 .flatten()
                 .collect::<Vec<Card>>();
         }
@@ -68,13 +70,17 @@ impl Card {
             }
 
             let Some((split, rest)) = type_line.split_once(" — ") else {
-                // println!("{type_line}");
                 return Vec::new();
             };
 
+            let rest_inner = rest.split(" ").collect::<Vec<&str>>();
+            for entry in rest_inner.into_iter() {
+                hs.insert(entry.to_string());
+            }
+
             let inner = split.split(" ").collect::<Vec<&str>>();
-            if inner.len() > 1 {
-                println!("{inner:?}");
+            for entry in inner.into_iter() {
+                hs.insert(entry.to_string());
             }
         }
 

@@ -7,6 +7,7 @@ create table if not exists card (
     loyalty integer,
     artist text,
     oracle_id text,
+    type_line text,
     lang text,
     content_warning boolean,
     converted_mana_cost real,
@@ -58,17 +59,22 @@ create table if not exists images (
     foreign key (image_type_id) references image_type(id)
 );
 
-create table if not exists mtg_type (
-    id integer primary key,
-    name text not null unique
+create table if not exists card_supertype (
+    card_id text not null references card(id),
+    supertype text not null,
+    primary key (card_id, supertype)
 );
 
-create table if not exists card_type_map (
-    card_id text not null,
-    type_id integer not null,
-    primary key (card_id, type_id),
-    foreign key (card_id) references card(id),
-    foreign key (type_id) references mtg_type(id)
+create table if not exists card_type (
+    card_id text not null references card(id),
+    type text not null,
+    primary key (card_id, type)
+);
+
+create table if not exists card_subtype (
+    card_id text not null references card(id),
+    subtype text not null,
+    primary key (card_id, subtype)
 );
 
 create table if not exists format (
@@ -79,10 +85,16 @@ create table if not exists format (
 create table if not exists legality (
     card_id text not null,
     format_id integer not null,
-    is_legal boolean not null,
+    status text not null check (status in ('legal', 'banned', 'restricted', 'not_legal'),
     primary key (card_id, format_id),
     foreign key (card_id) references card(id),
     foreign key (format_id) references format(id)
+);
+
+create table if not exists card_supertype(
+    card_id text not null references card(id),
+    supertype text not null,
+    primary_key (card_id, supertype)
 );
 
 create index if not exists idx_card on card(id);
