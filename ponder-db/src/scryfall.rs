@@ -2,6 +2,7 @@ use anyhow::Result;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::BTreeMap, path::PathBuf};
+use tokio::io::split;
 
 const URL: &str = "https://api.scryfall.com/bulk-data";
 
@@ -168,7 +169,17 @@ impl<'a> ScryfallCard<'a> {
             return;
         }
 
-        println!("\"{}\": {type_line}", self.name);
+        let has_supertype = |phrase: &str| {
+            matches!(
+                phrase,
+                "Legendary" | "Basic" | "Ongoing" | "Snow" | "World" | "Hero" | "Elite"
+            )
+        };
+        let delim = " — ";
+        let split_types = type_line.split(delim).collect::<Vec<&str>>();
+        if split_types.len() == 1 {
+            let return_type = (None::<&str>, Some(vec![split_types[0]]), None::<&str>);
+        }
     }
 }
 
