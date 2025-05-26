@@ -62,60 +62,113 @@ pub(crate) enum Legality {
     Restricted,
 }
 
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum Color {
+    Colorless = 0,
+    White = 1,
+    Blue = 2,
+    Black = 4,
+    Red = 8,
+    Green = 16,
+    Tap = 32, // Only ONE card has this and it's an Unfinity card
+}
+
+impl Color {
+    pub(crate) fn as_u8(&self) -> u8 {
+        *self as u8
+    }
+
+    pub(crate) fn from_char(ch: char) -> Self {
+        match ch {
+            'C' => Self::Colorless,
+            'W' => Self::White,
+            'U' => Self::Blue,
+            'B' => Self::Black,
+            'R' => Self::Red,
+            'G' => Self::Green,
+            'T' => Self::Tap,
+            _ => panic!("unexpected char for color: {ch}"),
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug)]
-pub struct ScryfallCard {
-    pub(crate) id: Option<String>,
-    pub(crate) object: Option<String>,
-    pub(crate) name: Option<String>,
-    pub(crate) color_indicator: Option<Vec<String>>,
-    pub(crate) produced_mana: Option<Vec<String>>,
-    pub(crate) loyalty: Option<String>,
+pub struct ScryfallCard<'a> {
+    pub(crate) id: Option<Cow<'a, str>>,
+    pub(crate) object: Cow<'a, str>,
+    pub(crate) name: Cow<'a, str>,
+    pub(crate) color_indicator: Option<Vec<Cow<'a, str>>>,
+    pub(crate) loyalty: Option<Cow<'a, str>>,
     pub(crate) legalities: Option<BTreeMap<Format, Legality>>,
-    pub(crate) artist: Option<String>,
-    pub(crate) oracle_id: Option<String>,
-    pub(crate) type_line: Option<String>,
-    pub(crate) defense: Option<String>,
-    pub(crate) lang: Option<String>,
-    pub(crate) card_faces: Option<Vec<ScryfallCard>>,
+    pub(crate) artist: Option<Cow<'a, str>>,
+    pub(crate) oracle_id: Option<Cow<'a, str>>,
+    pub(crate) type_line: Option<Cow<'a, str>>,
+    pub(crate) defense: Option<Cow<'a, str>>,
+    pub(crate) lang: Option<Cow<'a, str>>,
+    pub(crate) card_faces: Option<Vec<ScryfallCard<'a>>>,
     pub(crate) content_warning: Option<bool>,
     pub(crate) cmc: Option<f32>,
-    pub(crate) image_status: Option<String>,
-    pub(crate) flavor_text: Option<String>,
+    pub(crate) image_status: Option<Cow<'a, str>>,
+    pub(crate) flavor_text: Option<Cow<'a, str>>,
     pub(crate) arena_id: Option<i32>,
-    pub(crate) illustration_id: Option<String>,
-    pub(crate) oracle_text: Option<String>,
-    pub(crate) color_identity: Option<Vec<String>>,
-    pub(crate) rarity: Option<String>,
-    pub(crate) power: Option<String>,
-    pub(crate) set_name: Option<String>,
+    pub(crate) illustration_id: Option<Cow<'a, str>>,
+    pub(crate) oracle_text: Option<Cow<'a, str>>,
+    pub(crate) colors: Option<Vec<Cow<'a, str>>>,
+    pub(crate) color_identity: Option<Vec<Cow<'a, str>>>,
+    pub(crate) produced_mana: Option<Vec<Cow<'a, str>>>,
+    pub(crate) rarity: Option<Cow<'a, str>>,
+    pub(crate) power: Option<Cow<'a, str>>,
+    pub(crate) set_name: Option<Cow<'a, str>>,
     pub(crate) penny_rank: Option<i32>,
     pub(crate) variation: Option<bool>,
-    pub(crate) set_id: Option<String>,
-    pub(crate) toughness: Option<String>,
+    pub(crate) set_id: Option<Cow<'a, str>>,
+    pub(crate) toughness: Option<Cow<'a, str>>,
     pub(crate) mtgo_id: Option<i32>,
-    pub(crate) colors: Option<Vec<String>>,
     pub(crate) booster: Option<bool>,
-    pub(crate) border_color: Option<String>,
+    pub(crate) border_color: Option<Cow<'a, str>>,
     pub(crate) foil: Option<bool>,
-    pub(crate) set_type: Option<String>,
+    pub(crate) set_type: Option<Cow<'a, str>>,
     pub(crate) nonfoil: Option<bool>,
     pub(crate) game_changer: Option<bool>,
     pub(crate) reprint: Option<bool>,
-    pub(crate) layout: Option<String>,
+    pub(crate) layout: Option<Cow<'a, str>>,
     pub(crate) reserved: Option<bool>,
     pub(crate) digital: Option<bool>,
-    pub(crate) set: Option<String>,
-    pub(crate) keywords: Option<Vec<String>>,
+    pub(crate) set: Option<Cow<'a, str>>,
+    pub(crate) keywords: Option<Vec<Cow<'a, str>>>,
     pub(crate) highres_image: Option<bool>,
-    pub(crate) mana_cost: Option<String>,
-    pub(crate) image_uris: Option<BTreeMap<String, String>>,
-    pub(crate) games: Option<Vec<String>>,
+    pub(crate) mana_cost: Option<Cow<'a, str>>,
+    pub(crate) image_uris: Option<ImageUris<'a>>,
+    pub(crate) games: Option<Vec<Cow<'a, str>>>,
     pub(crate) promo: Option<bool>,
 }
 
-impl ScryfallCard {
+impl<'a> ScryfallCard<'a> {
+    // We need to deal with the following per card:
+    // * Supertype: (Basic Legendary, Ongoing, Snow, World) - https://mtg.fandom.com/wiki/Supertype
+    // * Type: The main type of the card (Artifact, Enchantment, Sorcery, etc)
+    // * Subtype: Anything after the - in the `type_line` field (Delimited by space)
+    //
+    // We also need to deal with Double-faced cards (i.e. any card with multiple card faces)
     pub fn extract_types(&self) {
-        //
+        if self.card_faces.is_some() {
+            for face in self.card_faces.as_ref().unwrap() {
+                face.extract_types();
+            }
+
+            return;
+        }
+
+        let Some(type_line) = self.type_line.as_ref() else {
+            return;
+        };
+
+        // Don't care about tokens
+        if type_line.contains("Token") {
+            return;
+        }
+
+        println!("\"{}\": {type_line}", self.name);
     }
 }
 
@@ -135,20 +188,30 @@ async fn download_data<T: serde::de::DeserializeOwned>(url: &str) -> Result<T> {
 // TODO: Extract out when it becomes a bit too much
 fn filter_cards(cards: Vec<ScryfallCard>) -> Vec<ScryfallCard> {
     let valid = |card: &ScryfallCard| {
+        // Weird vanguard cards
         if let Some(ref st) = card.set_type {
             if st == "vanguard" {
                 return false;
             }
         }
 
+        // Test play cards - there are probably others
         if let Some(ref sn) = card.set_name {
             if sn.contains("Mystery Booster Playtest") {
                 return false;
             }
         }
 
+        // Art cards
+        if let Some(ref type_line) = card.type_line {
+            if type_line.contains("Card") {
+                return false;
+            }
+        }
+
+        // Unsupported formats (i.e. 90s promotions)
         if let Some(ref g) = card.games {
-            if g.contains(&"sega".to_string()) || g.contains(&"astral".to_string()) {
+            if g.contains(&Cow::Borrowed("sega")) || g.contains(&Cow::Borrowed("astral")) {
                 return false;
             }
         }
@@ -162,7 +225,7 @@ fn filter_cards(cards: Vec<ScryfallCard>) -> Vec<ScryfallCard> {
         .collect::<Vec<ScryfallCard>>()
 }
 
-pub async fn download_latest() -> Result<Vec<ScryfallCard>> {
+pub async fn download_latest<'a>() -> Result<Vec<ScryfallCard<'a>>> {
     // TODO: Temp
     let card_file = PathBuf::from("cards.json");
     let cards = if card_file.exists() {
@@ -176,6 +239,10 @@ pub async fn download_latest() -> Result<Vec<ScryfallCard>> {
 
         cards
     };
+
+    for card in cards.iter() {
+        card.extract_types();
+    }
 
     Ok(cards)
 }
