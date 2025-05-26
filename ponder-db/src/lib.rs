@@ -1,10 +1,8 @@
 use anyhow::{Context, Result};
-use card::Card;
 use scryfall::ScryfallCard;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 
 use std::{
-    collections::HashSet,
     path::{Path, PathBuf},
     str::FromStr,
 };

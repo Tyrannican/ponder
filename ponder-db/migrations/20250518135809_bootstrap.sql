@@ -49,7 +49,6 @@ create table if not exists image_type (
     name text not null unique
 );
 
-
 create table if not exists images (
     card_id text not null,
     image_type_id integer not null,
@@ -85,16 +84,10 @@ create table if not exists format (
 create table if not exists legality (
     card_id text not null,
     format_id integer not null,
-    status text not null check (status in ('legal', 'banned', 'restricted', 'not_legal'),
+    status text not null check (status in ('legal', 'banned', 'restricted', 'not_legal')),
     primary key (card_id, format_id),
     foreign key (card_id) references card(id),
     foreign key (format_id) references format(id)
-);
-
-create table if not exists card_supertype(
-    card_id text not null references card(id),
-    supertype text not null,
-    primary_key (card_id, supertype)
 );
 
 create index if not exists idx_card on card(id);

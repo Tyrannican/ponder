@@ -1,7 +1,7 @@
 use anyhow::Result;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::PathBuf};
+use std::{borrow::Cow, collections::BTreeMap, path::PathBuf};
 
 const URL: &str = "https://api.scryfall.com/bulk-data";
 
@@ -17,6 +17,52 @@ struct BulkEntry {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+pub(crate) struct ImageUris<'a> {
+    art_crop: Option<Cow<'a, str>>,
+    png: Option<Cow<'a, str>>,
+    normal: Option<Cow<'a, str>>,
+    large: Option<Cow<'a, str>>,
+    small: Option<Cow<'a, str>>,
+    border_crop: Option<Cow<'a, str>>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum Format {
+    Standard,
+    Future,
+    Historic,
+    Timeless,
+    Gladiator,
+    Pioneer,
+    Explorer,
+    Modern,
+    Legacy,
+    Pauper,
+    Vintage,
+    Penny,
+    Commander,
+    Oathbreaker,
+    StandardBrawl,
+    Brawl,
+    Alchemy,
+    PauperCommander,
+    Duel,
+    Oldschool,
+    Premodern,
+    Predh,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum Legality {
+    Legal,
+    NotLegal,
+    Banned,
+    Restricted,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ScryfallCard {
     pub(crate) id: Option<String>,
     pub(crate) object: Option<String>,
@@ -24,7 +70,7 @@ pub struct ScryfallCard {
     pub(crate) color_indicator: Option<Vec<String>>,
     pub(crate) produced_mana: Option<Vec<String>>,
     pub(crate) loyalty: Option<String>,
-    pub(crate) legalities: Option<HashMap<String, String>>,
+    pub(crate) legalities: Option<BTreeMap<Format, Legality>>,
     pub(crate) artist: Option<String>,
     pub(crate) oracle_id: Option<String>,
     pub(crate) type_line: Option<String>,
@@ -62,14 +108,19 @@ pub struct ScryfallCard {
     pub(crate) keywords: Option<Vec<String>>,
     pub(crate) highres_image: Option<bool>,
     pub(crate) mana_cost: Option<String>,
-    pub(crate) image_uris: Option<HashMap<String, String>>,
+    pub(crate) image_uris: Option<BTreeMap<String, String>>,
     pub(crate) games: Option<Vec<String>>,
     pub(crate) promo: Option<bool>,
 }
 
+impl ScryfallCard {
+    pub fn extract_types(&self) {
+        //
+    }
+}
+
 async fn download_data<T: serde::de::DeserializeOwned>(url: &str) -> Result<T> {
-    let client = Client::new();
-    let data = client
+    let data = Client::new()
         .get(url)
         .header("accept", "application/json")
         .header("user-agent", "reqwest")
@@ -81,7 +132,7 @@ async fn download_data<T: serde::de::DeserializeOwned>(url: &str) -> Result<T> {
     Ok(data)
 }
 
-// TODO: Better Filtering?
+// TODO: Extract out when it becomes a bit too much
 fn filter_cards(cards: Vec<ScryfallCard>) -> Vec<ScryfallCard> {
     let valid = |card: &ScryfallCard| {
         if let Some(ref st) = card.set_type {
@@ -121,7 +172,7 @@ pub async fn download_latest() -> Result<Vec<ScryfallCard>> {
         let data = download_data::<Vec<ScryfallCard>>(&bulk.data[0].url).await?;
         let cards = filter_cards(data);
         let out_str = serde_json::to_string_pretty(&cards)?;
-        std::fs::write(&card_file, out_str)?;
+        tokio::fs::write(&card_file, out_str).await?;
 
         cards
     };
@@ -135,7 +186,7 @@ mod scryfall_tests {
 
     #[tokio::test]
     async fn checker() -> anyhow::Result<()> {
-        let cards = download_latest().await?;
+        download_latest().await?;
         Ok(())
     }
 }
