@@ -176,10 +176,9 @@ impl<'a> ScryfallCard<'a> {
             )
         };
         let delim = " — ";
-        let split_types = type_line.split(delim).collect::<Vec<&str>>();
-        if split_types.len() == 1 {
-            let return_type = (None::<&str>, Some(vec![split_types[0]]), None::<&str>);
-        }
+        let (main_types, subtypes) = type_line.split_once(delim).unwrap_or((type_line, ""));
+        let (super_type, main_type) = main_types.split_once(" ").unwrap_or(("", main_types));
+        println!("Supertype: {super_type} Main Type: {main_type} Subtype: {subtypes}");
     }
 }
 
