@@ -151,22 +151,27 @@ impl<'a> ScryfallCard<'a> {
     // * Subtype: Anything after the - in the `type_line` field (Delimited by space)
     //
     // We also need to deal with Double-faced cards (i.e. any card with multiple card faces)
-    pub fn extract_types(&self) {
+    pub fn extract_types(&self) -> Vec<(Option<&str>, Option<Vec<&str>>, Option<Vec<&str>>)> {
         if self.card_faces.is_some() {
+            let mut types = Vec::new();
             for face in self.card_faces.as_ref().unwrap() {
-                face.extract_types();
+                types.extend(face.extract_types());
             }
 
-            return;
+            return types;
         }
 
+        let mut supertype: Option<&str> = None;
+        let mut main_types: Option<Vec<&str>> = None;
+        let mut subtypes: Option<Vec<&str>> = None;
+
         let Some(type_line) = self.type_line.as_ref() else {
-            return;
+            return vec![(supertype, main_types, subtypes)];
         };
 
         // Don't care about tokens
         if type_line.contains("Token") {
-            return;
+            return vec![(supertype, main_types, subtypes)];
         }
 
         let has_supertype = |phrase: &str| {
@@ -175,10 +180,33 @@ impl<'a> ScryfallCard<'a> {
                 "Legendary" | "Basic" | "Ongoing" | "Snow" | "World" | "Hero" | "Elite"
             )
         };
-        let delim = " — ";
-        let (main_types, subtypes) = type_line.split_once(delim).unwrap_or((type_line, ""));
-        let (super_type, main_type) = main_types.split_once(" ").unwrap_or(("", main_types));
-        println!("Supertype: {super_type} Main Type: {main_type} Subtype: {subtypes}");
+
+        let delim = "—";
+        let split = type_line.split(" ").collect::<Vec<&str>>();
+        let supertype_present = has_supertype(split[0]);
+        match split.iter().position(|&s| s == delim) {
+            Some(idx) => {
+                if supertype_present {
+                    supertype = Some(split[0]);
+                    main_types = Some(split[1..idx].to_vec());
+                } else {
+                    main_types = Some(split[..idx].to_vec());
+                }
+
+                subtypes = Some(split[idx + 1..].to_vec());
+            }
+            None => {
+                if supertype_present {
+                    supertype = Some(split[0]);
+                    main_types = Some(split[1..].to_vec());
+                } else {
+                    main_types = Some(split.to_vec());
+                }
+            }
+        };
+
+        println!("Supertype: {supertype:?}\nMain Types: {main_types:?}\nSubtypes: {subtypes:?}\n");
+        vec![(supertype, main_types, subtypes)]
     }
 }
 
@@ -195,43 +223,43 @@ async fn download_data<T: serde::de::DeserializeOwned>(url: &str) -> Result<T> {
     Ok(data)
 }
 
+fn card_filter(card: &ScryfallCard) -> bool {
+    // Weird vanguard cards
+    if let Some(ref st) = card.set_type {
+        if st == "vanguard" {
+            return false;
+        }
+    }
+
+    // Test play cards - there are probably others
+    if let Some(ref sn) = card.set_name {
+        if sn.contains("Mystery Booster Playtest") {
+            return false;
+        }
+    }
+
+    // Art cards
+    if let Some(ref type_line) = card.type_line {
+        if type_line.contains("Card") {
+            return false;
+        }
+    }
+
+    // Unsupported formats (i.e. 90s promotions)
+    if let Some(ref g) = card.games {
+        if g.contains(&Cow::Borrowed("sega")) || g.contains(&Cow::Borrowed("astral")) {
+            return false;
+        }
+    }
+
+    true
+}
+
 // TODO: Extract out when it becomes a bit too much
 fn filter_cards(cards: Vec<ScryfallCard>) -> Vec<ScryfallCard> {
-    let valid = |card: &ScryfallCard| {
-        // Weird vanguard cards
-        if let Some(ref st) = card.set_type {
-            if st == "vanguard" {
-                return false;
-            }
-        }
-
-        // Test play cards - there are probably others
-        if let Some(ref sn) = card.set_name {
-            if sn.contains("Mystery Booster Playtest") {
-                return false;
-            }
-        }
-
-        // Art cards
-        if let Some(ref type_line) = card.type_line {
-            if type_line.contains("Card") {
-                return false;
-            }
-        }
-
-        // Unsupported formats (i.e. 90s promotions)
-        if let Some(ref g) = card.games {
-            if g.contains(&Cow::Borrowed("sega")) || g.contains(&Cow::Borrowed("astral")) {
-                return false;
-            }
-        }
-
-        true
-    };
-
     cards
         .into_iter()
-        .filter(valid)
+        .filter(card_filter)
         .collect::<Vec<ScryfallCard>>()
 }
 
