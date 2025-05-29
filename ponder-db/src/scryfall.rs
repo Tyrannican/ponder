@@ -255,7 +255,6 @@ fn card_filter(card: &ScryfallCard) -> bool {
     true
 }
 
-// TODO: Extract out when it becomes a bit too much
 fn filter_cards(cards: Vec<ScryfallCard>) -> Vec<ScryfallCard> {
     cards
         .into_iter()
