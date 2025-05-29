@@ -2,7 +2,6 @@ use anyhow::Result;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::BTreeMap, path::PathBuf};
-use tokio::io::split;
 
 const URL: &str = "https://api.scryfall.com/bulk-data";
 
@@ -145,12 +144,6 @@ pub struct ScryfallCard<'a> {
 }
 
 impl<'a> ScryfallCard<'a> {
-    // We need to deal with the following per card:
-    // * Supertype: (Basic Legendary, Ongoing, Snow, World) - https://mtg.fandom.com/wiki/Supertype
-    // * Type: The main type of the card (Artifact, Enchantment, Sorcery, etc)
-    // * Subtype: Anything after the - in the `type_line` field (Delimited by space)
-    //
-    // We also need to deal with Double-faced cards (i.e. any card with multiple card faces)
     pub fn extract_types(&self) -> Vec<(Option<&str>, Option<Vec<&str>>, Option<Vec<&str>>)> {
         if self.card_faces.is_some() {
             let mut types = Vec::new();
@@ -205,7 +198,6 @@ impl<'a> ScryfallCard<'a> {
             }
         };
 
-        println!("Supertype: {supertype:?}\nMain Types: {main_types:?}\nSubtypes: {subtypes:?}\n");
         vec![(supertype, main_types, subtypes)]
     }
 }
@@ -255,13 +247,6 @@ fn card_filter(card: &ScryfallCard) -> bool {
     true
 }
 
-fn filter_cards(cards: Vec<ScryfallCard>) -> Vec<ScryfallCard> {
-    cards
-        .into_iter()
-        .filter(card_filter)
-        .collect::<Vec<ScryfallCard>>()
-}
-
 pub async fn download_latest<'a>() -> Result<Vec<ScryfallCard<'a>>> {
     // TODO: Temp
     let card_file = PathBuf::from("cards.json");
@@ -270,7 +255,10 @@ pub async fn download_latest<'a>() -> Result<Vec<ScryfallCard<'a>>> {
     } else {
         let bulk: BulkData = download_data::<BulkData>(URL).await?;
         let data = download_data::<Vec<ScryfallCard>>(&bulk.data[0].url).await?;
-        let cards = filter_cards(data);
+        let cards = data
+            .into_iter()
+            .filter(card_filter)
+            .collect::<Vec<ScryfallCard>>();
         let out_str = serde_json::to_string_pretty(&cards)?;
         tokio::fs::write(&card_file, out_str).await?;
 
