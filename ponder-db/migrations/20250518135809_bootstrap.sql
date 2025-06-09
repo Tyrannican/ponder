@@ -21,10 +21,10 @@ create table if not exists card (
     rarity text,
     power integer,
     toughness integer,
-    set_name text,
-    set_id text,
-    set_type text,
-    set_short text,
+    set_name text, -- E.g. Amonkhet
+    set_id text, -- E.g. 2990-sdijkfks-287u
+    set_type text, -- E.g. Commander
+    set_short text, -- E.g. AKH
     penny_rank text,
     variation boolean,
     mtgo_id integer,
@@ -36,7 +36,6 @@ create table if not exists card (
     layout text,
     reserved boolean,
     digital boolean,
-    keywords text,
     mana_cost text,
     mtgo boolean,
     arena boolean,

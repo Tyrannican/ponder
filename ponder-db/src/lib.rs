@@ -33,6 +33,7 @@ impl SqliteStore {
 
         Self::setup_db(&pool).await?;
         let cards = scryfall::download_latest().await?;
+        println!("{:?}", &cards[0]);
         Ok(Self { pool })
     }
 
@@ -47,7 +48,10 @@ impl SqliteStore {
 
     // Insert card into all tables with insert or ignore
     async fn add_card(&self, card: &scryfall::ScryfallCard<'_>) -> Result<()> {
-        sqlx::query("insert or ignore into card() values()")
+        let query = r#"
+            insert or ignore into card() values()
+        "#;
+        sqlx::query(&query)
             .execute(&self.pool)
             .await
             .with_context(|| format!("insert {} into database", card.name))?;
