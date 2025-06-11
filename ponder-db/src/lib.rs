@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use scryfall::ScryfallCard;
+use scryfall::{Format, ScryfallCard};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 
 use std::{
@@ -46,8 +46,10 @@ impl SqliteStore {
 
     pub async fn update(&self) -> Result<()> {
         let cards = scryfall::download_latest().await?;
+        self.add_formats().await?;
         for card in cards.iter() {
             self.add_card(&card).await?;
+            self.add_legalities(&card).await?;
         }
 
         Ok(())
@@ -196,6 +198,67 @@ impl SqliteStore {
             .await
             .with_context(|| format!("insert {} into database", card.name))?;
 
+        Ok(())
+    }
+
+    async fn add_formats(&self) -> Result<()> {
+        for format in [
+            Format::Modern,
+            Format::StandardBrawl,
+            Format::Oathbreaker,
+            Format::Commander,
+            Format::Penny,
+            Format::Brawl,
+            Format::PauperCommander,
+            Format::Alchemy,
+            Format::Premodern,
+            Format::Predh,
+            Format::Oldschool,
+            Format::Vintage,
+            Format::Legacy,
+            Format::Historic,
+            Format::Future,
+            Format::Standard,
+            Format::Pauper,
+            Format::Timeless,
+            Format::Pioneer,
+            Format::Gladiator,
+            Format::Explorer,
+            Format::Duel,
+        ] {
+            sqlx::query(
+                "insert into format(name) values(?) on conflict(name) do update set name=name",
+            )
+            .bind(serde_json::to_string(&format)?)
+            .execute(&self.pool)
+            .await
+            .with_context(|| format!("inserting {format:?} into db"))?;
+        }
+        Ok(())
+    }
+
+    async fn add_legalities(&self, card: &ScryfallCard<'_>) -> Result<()> {
+        if let Some(legalities) = &card.legalities {
+            for (format, legality) in legalities.iter() {
+                let format_id: i64 = sqlx::query_scalar("select id from format where name = ?")
+                    .bind(&format.to_string())
+                    .fetch_one(&self.pool)
+                    .await?;
+
+                sqlx::query("insert into legality(card_id, format_id, status) values(?, ?, ?)")
+                    .bind(&card.id)
+                    .bind(&format_id)
+                    .bind(&legality.to_string())
+                    .execute(&self.pool)
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "inserting legality {:?} ({}) {} ({}) {}",
+                            card.id, card.name, format_id, format, legality
+                        )
+                    })?;
+            }
+        }
         Ok(())
     }
 }
