@@ -32,8 +32,6 @@ impl SqliteStore {
             .context("creating database")?;
 
         Self::setup_db(&pool).await?;
-        let cards = scryfall::download_latest().await?;
-        println!("{:?}", &cards[0]);
         Ok(Self { pool })
     }
 
@@ -46,15 +44,158 @@ impl SqliteStore {
         Ok(())
     }
 
+    pub async fn update(&self) -> Result<()> {
+        let cards = scryfall::download_latest().await?;
+        for card in cards.iter() {
+            self.add_card(&card).await?;
+        }
+
+        Ok(())
+    }
+
     // Insert card into all tables with insert or ignore
     async fn add_card(&self, card: &scryfall::ScryfallCard<'_>) -> Result<()> {
+        // TODO: Deal with card faces
+        if card.card_faces.is_some() {
+            return Ok(());
+        }
+
         let query = r#"
-            insert or ignore into card() values()
+            insert or ignore into card(
+                id,
+                object,
+                name,
+                color_indicator,
+                produced_mana,
+                loyalty,
+                artist,
+                oracle_id,
+                type_line,
+                lang,
+                content_warning,
+                converted_mana_cost,
+                image_status,
+                flavor_text,
+                arena_id,
+                illustration_id,
+                oracle_text,
+                colors,
+                color_identity,
+                rarity,
+                power,
+                toughness,
+                set_name,
+                set_id, 
+                set_type, 
+                set_short, 
+                penny_rank,
+                variation,
+                mtgo_id,
+                booster,
+                border_color,
+                foil,
+                game_changer,
+                reprint,
+                layout,
+                reserved,
+                digital,
+                mana_cost,
+                mtgo,
+                arena,
+                paper,
+                promo 
+            ) values(
+                ?1,
+                ?2,
+                ?3,
+                ?4,
+                ?5,
+                ?6,
+                ?7,
+                ?8,
+                ?9,
+                ?10,
+                ?11,
+                ?12,
+                ?13,
+                ?14,
+                ?15,
+                ?16,
+                ?17,
+                ?18,
+                ?19,
+                ?20,
+                ?21,
+                ?22,
+                ?23,
+                ?24,
+                ?25,
+                ?26,
+                ?27,
+                ?28,
+                ?29,
+                ?30,
+                ?31,
+                ?32,
+                ?33,
+                ?34,
+                ?35,
+                ?36,
+                ?37,
+                ?38,
+                ?39,
+                ?40,
+                ?41,
+                ?42
+            )
         "#;
         sqlx::query(&query)
+            .bind(&card.id)
+            .bind(&card.object)
+            .bind(&card.name)
+            .bind(card_field_to_string!(card, color_indicator))
+            .bind(card_field_to_string!(card, produced_mana))
+            .bind(&card.loyalty)
+            .bind(&card.artist)
+            .bind(&card.oracle_id)
+            .bind(&card.type_line)
+            .bind(&card.lang)
+            .bind(&card.content_warning)
+            .bind(&card.cmc)
+            .bind(&card.image_status)
+            .bind(&card.flavor_text)
+            .bind(&card.arena_id)
+            .bind(&card.illustration_id)
+            .bind(&card.oracle_text)
+            .bind(card_field_to_string!(card, colors))
+            .bind(card_field_to_string!(card, color_indicator))
+            .bind(&card.rarity)
+            .bind(&card.power)
+            .bind(&card.toughness)
+            .bind(&card.set_name)
+            .bind(&card.set_id)
+            .bind(&card.set_type)
+            .bind(&card.set)
+            .bind(&card.penny_rank)
+            .bind(&card.variation)
+            .bind(&card.mtgo_id)
+            .bind(&card.booster)
+            .bind(&card.border_color)
+            .bind(&card.foil)
+            .bind(&card.game_changer)
+            .bind(&card.reprint)
+            .bind(&card.layout)
+            .bind(&card.reserved)
+            .bind(&card.digital)
+            .bind(&card.mana_cost)
+            .bind(&card.contains_game("mtgo"))
+            .bind(&card.contains_game("arena"))
+            .bind(&card.contains_game("paper"))
+            .bind(&card.promo)
             .execute(&self.pool)
             .await
             .with_context(|| format!("insert {} into database", card.name))?;
+
         Ok(())
     }
 }

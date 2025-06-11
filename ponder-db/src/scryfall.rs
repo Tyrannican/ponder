@@ -145,15 +145,6 @@ pub struct ScryfallCard<'a> {
 
 impl<'a> ScryfallCard<'a> {
     pub fn extract_types(&self) -> Vec<(Option<&str>, Option<Vec<&str>>, Option<Vec<&str>>)> {
-        if self.card_faces.is_some() {
-            let mut types = Vec::new();
-            for face in self.card_faces.as_ref().unwrap() {
-                types.extend(face.extract_types());
-            }
-
-            return types;
-        }
-
         let mut supertype: Option<&str> = None;
         let mut main_types: Option<Vec<&str>> = None;
         let mut subtypes: Option<Vec<&str>> = None;
@@ -199,6 +190,13 @@ impl<'a> ScryfallCard<'a> {
         };
 
         vec![(supertype, main_types, subtypes)]
+    }
+
+    pub fn contains_game(&self, game: &str) -> bool {
+        match self.games.as_ref() {
+            Some(games) => games.contains(&Cow::Borrowed(game)),
+            None => false,
+        }
     }
 }
 
@@ -270,6 +268,16 @@ pub async fn download_latest<'a>() -> Result<Vec<ScryfallCard<'a>>> {
     }
 
     Ok(cards)
+}
+
+#[macro_export]
+macro_rules! card_field_to_string {
+    ($item:expr, $field:ident) => {
+        match &$item.$field {
+            Some(v) => Some(v.join(",")),
+            None => None,
+        }
+    };
 }
 
 #[cfg(test)]

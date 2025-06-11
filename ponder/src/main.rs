@@ -7,14 +7,14 @@ use ponder_db::SqliteStore;
 #[derive(Debug)]
 pub struct Ponder {
     pub workspace: PathBuf,
-    pub db: SqliteStore,
+    pub store: SqliteStore,
 }
 
 impl Ponder {
     pub async fn new() -> Result<Self> {
         let workspace = dotstore::home_store("ponder")?.expect("could not find home directory");
         Ok(Self {
-            db: SqliteStore::load(&workspace).await?,
+            store: SqliteStore::load(&workspace).await?,
             workspace,
         })
     }
@@ -23,6 +23,7 @@ impl Ponder {
 #[tokio::main]
 async fn main() -> Result<()> {
     let state = Ponder::new().await?;
+    state.store.update().await?;
 
     Ok(())
 }
