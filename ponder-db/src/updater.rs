@@ -43,7 +43,7 @@ pub struct DatabaseUpdater<'a> {
     pool: &'a SqlitePool,
 }
 
-// TODO: Deal with Card faces
+// TODO: Deal with Card faces being ignored when added
 impl<'a> DatabaseUpdater<'a> {
     pub fn new(pool: &'a SqlitePool) -> Self {
         Self { pool }
@@ -58,18 +58,34 @@ impl<'a> DatabaseUpdater<'a> {
         self.add_image_types(&mut txn).await?;
 
         for card in cards.iter() {
-            // TODO: Deal with card faces
-            if card.card_faces.is_some() {
-                continue;
+            if let Some(ref faces) = card.card_faces {
+                for face in faces.iter() {
+                    self.update_single(face, &mut txn).await?;
+                }
+            } else {
+                self.add_card(&card, &mut txn).await?;
+                self.add_legalities(&card, &mut txn).await?;
+                self.add_keywords(&card, &mut txn).await?;
+                self.add_images(&card, &mut txn).await?;
+                self.add_card_types(&card, &mut txn).await?;
             }
-            self.add_card(&card, &mut txn).await?;
-            self.add_legalities(&card, &mut txn).await?;
-            self.add_keywords(&card, &mut txn).await?;
-            self.add_images(&card, &mut txn).await?;
-            self.add_card_types(&card, &mut txn).await?;
         }
 
         txn.commit().await?;
+
+        Ok(())
+    }
+
+    async fn update_single(
+        &self,
+        card: &ScryfallCard<'_>,
+        txn: &mut SqliteTransaction<'_>,
+    ) -> Result<()> {
+        self.add_card(&card, txn).await?;
+        self.add_legalities(&card, txn).await?;
+        self.add_keywords(&card, txn).await?;
+        self.add_images(&card, txn).await?;
+        self.add_card_types(&card, txn).await?;
 
         Ok(())
     }
@@ -261,7 +277,13 @@ impl<'a> DatabaseUpdater<'a> {
             .bind(&card.promo)
             .execute(txn.as_mut())
             .await
-            .with_context(|| format!("insert {} into database", card.name))?;
+            .with_context(|| {
+                format!(
+                    "insert {} into database - {}",
+                    card.name,
+                    card.id.as_ref().unwrap()
+                )
+            })?;
 
         Ok(())
     }
@@ -360,7 +382,7 @@ impl<'a> DatabaseUpdater<'a> {
         let (supertype, card_types, subtypes) = card.extract_types();
 
         if let Some(supertype) = supertype {
-            sqlx::query("insert into card_supertype(card_id, supertype) values(?, ?)")
+            sqlx::query("insert or ignore into card_supertype(card_id, supertype) values(?, ?)")
                 .bind(&card.id)
                 .bind(supertype)
                 .execute(txn.as_mut())
@@ -370,7 +392,7 @@ impl<'a> DatabaseUpdater<'a> {
 
         if let Some(card_types) = card_types {
             for ct in card_types {
-                sqlx::query("insert into card_type(card_id, type) values(?, ?)")
+                sqlx::query("insert or ignore into card_type(card_id, type) values(?, ?)")
                     .bind(&card.id)
                     .bind(ct)
                     .execute(txn.as_mut())
@@ -381,7 +403,7 @@ impl<'a> DatabaseUpdater<'a> {
 
         if let Some(subtypes) = subtypes {
             for st in subtypes {
-                sqlx::query("insert into card_subtype(card_id, subtype) values(?, ?)")
+                sqlx::query("insert or ignore into card_subtype(card_id, subtype) values(?, ?)")
                     .bind(&card.id)
                     .bind(st)
                     .execute(txn.as_mut())
