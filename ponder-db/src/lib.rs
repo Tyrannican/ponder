@@ -18,8 +18,6 @@ pub struct SqliteStore {
     pool: SqlitePool,
 }
 
-// TODO: Add logic for Supertypes / Types / Subtypes
-// TODO: Deal with Card faces
 impl SqliteStore {
     pub async fn load(ws: impl AsRef<Path>) -> Result<Self> {
         let lead = PathBuf::from("sqlite:/");
