@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::BTreeMap, path::PathBuf};
@@ -18,12 +18,12 @@ struct BulkEntry {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub(crate) struct ImageUris<'a> {
-    art_crop: Option<Cow<'a, str>>,
-    png: Option<Cow<'a, str>>,
-    normal: Option<Cow<'a, str>>,
-    large: Option<Cow<'a, str>>,
-    small: Option<Cow<'a, str>>,
-    border_crop: Option<Cow<'a, str>>,
+    pub(crate) art_crop: Option<Cow<'a, str>>,
+    pub(crate) png: Option<Cow<'a, str>>,
+    pub(crate) normal: Option<Cow<'a, str>>,
+    pub(crate) large: Option<Cow<'a, str>>,
+    pub(crate) small: Option<Cow<'a, str>>,
+    pub(crate) border_crop: Option<Cow<'a, str>>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -55,7 +55,8 @@ pub(crate) enum Format {
 
 impl std::fmt::Display for Format {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap())
+        let format = serde_json::to_string(&self).unwrap();
+        write!(f, "{}", format.replace("\"", ""))
     }
 }
 
@@ -70,7 +71,8 @@ pub(crate) enum Legality {
 
 impl std::fmt::Display for Legality {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap())
+        let value = serde_json::to_string(&self).unwrap();
+        write!(f, "{}", value.replace("\"", ""))
     }
 }
 
@@ -213,6 +215,7 @@ impl<'a> ScryfallCard<'a> {
 }
 
 async fn download_data<T: serde::de::DeserializeOwned>(url: &str) -> Result<T> {
+    println!("Downloading latest card data...");
     let data = Client::new()
         .get(url)
         .header("accept", "application/json")
@@ -254,6 +257,12 @@ fn card_filter(card: &ScryfallCard) -> bool {
         }
     }
 
+    if let Some(ref type_line) = card.type_line {
+        if type_line.contains("Token") {
+            return false;
+        }
+    }
+
     true
 }
 
@@ -275,15 +284,11 @@ pub async fn download_latest<'a>() -> Result<Vec<ScryfallCard<'a>>> {
         cards
     };
 
-    for card in cards.iter() {
-        card.extract_types();
-    }
-
     Ok(cards)
 }
 
 #[macro_export]
-macro_rules! card_field_to_string {
+macro_rules! card_vec_field_to_string {
     ($item:expr, $field:ident) => {
         match &$item.$field {
             Some(v) => Some(v.join(",")),
