@@ -1,9 +1,6 @@
 use anyhow::{Context, Result};
-use scryfall::{Format, ScryfallCard};
-use sqlx::{
-    Row, SqliteTransaction,
-    sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions},
-};
+use scryfall::ScryfallCard;
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 
 use std::{
     path::{Path, PathBuf},
@@ -21,8 +18,6 @@ pub struct SqliteStore {
     pool: SqlitePool,
 }
 
-// TODO: Move the Update logic to new struct (e.g. SqliteUpdater)
-// TODO: Fix Colors and that are arrays so they're numbers in the DB
 // TODO: Add logic for Supertypes / Types / Subtypes
 // TODO: Deal with Card faces
 impl SqliteStore {

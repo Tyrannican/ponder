@@ -1,4 +1,3 @@
-use crate::colors_as_u8;
 use crate::scryfall::{Format, ScryfallCard, download_latest};
 use anyhow::{Context, Result};
 use sqlx::{Row, SqliteTransaction, sqlite::SqlitePool};
@@ -23,11 +22,28 @@ macro_rules! insert_image {
     };
 }
 
+macro_rules! colors_as_u8 {
+    ($card:expr, $field:ident) => {
+        if let Some(ref values) = $card.$field {
+            let mut value: u8 = 0;
+            for color in values.iter() {
+                let color = crate::scryfall::Color::from_str(color);
+                value += color as u8;
+            }
+
+            Some(value)
+        } else {
+            None
+        }
+    };
+}
+
 #[derive(Debug, Clone)]
 pub struct DatabaseUpdater<'a> {
     pool: &'a SqlitePool,
 }
 
+// TODO: Deal with Card faces
 impl<'a> DatabaseUpdater<'a> {
     pub fn new(pool: &'a SqlitePool) -> Self {
         Self { pool }
@@ -50,6 +66,7 @@ impl<'a> DatabaseUpdater<'a> {
             self.add_legalities(&card, &mut txn).await?;
             self.add_keywords(&card, &mut txn).await?;
             self.add_images(&card, &mut txn).await?;
+            self.add_card_types(&card, &mut txn).await?;
         }
 
         txn.commit().await?;
@@ -332,6 +349,47 @@ impl<'a> DatabaseUpdater<'a> {
             insert_image!(&card, txn, images, small);
             insert_image!(&card, txn, images, border_crop);
         }
+        Ok(())
+    }
+
+    async fn add_card_types(
+        &self,
+        card: &ScryfallCard<'_>,
+        txn: &mut SqliteTransaction<'_>,
+    ) -> Result<()> {
+        let (supertype, card_types, subtypes) = card.extract_types();
+
+        if let Some(supertype) = supertype {
+            sqlx::query("insert into card_supertype(card_id, supertype) values(?, ?)")
+                .bind(&card.id)
+                .bind(supertype)
+                .execute(txn.as_mut())
+                .await
+                .with_context(|| format!("inserting supertype - {} {}", card.name, supertype))?;
+        }
+
+        if let Some(card_types) = card_types {
+            for ct in card_types {
+                sqlx::query("insert into card_type(card_id, type) values(?, ?)")
+                    .bind(&card.id)
+                    .bind(ct)
+                    .execute(txn.as_mut())
+                    .await
+                    .with_context(|| format!("inserting type - {} {}", card.name, ct))?;
+            }
+        }
+
+        if let Some(subtypes) = subtypes {
+            for st in subtypes {
+                sqlx::query("insert into card_subtype(card_id, subtype) values(?, ?)")
+                    .bind(&card.id)
+                    .bind(st)
+                    .execute(txn.as_mut())
+                    .await
+                    .with_context(|| format!("inserting subtype - {} {}", card.name, st))?;
+            }
+        }
+
         Ok(())
     }
 }

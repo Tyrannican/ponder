@@ -154,18 +154,18 @@ pub struct ScryfallCard<'a> {
 }
 
 impl<'a> ScryfallCard<'a> {
-    pub fn extract_types(&self) -> Vec<(Option<&str>, Option<Vec<&str>>, Option<Vec<&str>>)> {
+    pub fn extract_types(&self) -> (Option<&str>, Option<Vec<&str>>, Option<Vec<&str>>) {
         let mut supertype: Option<&str> = None;
         let mut main_types: Option<Vec<&str>> = None;
         let mut subtypes: Option<Vec<&str>> = None;
 
         let Some(type_line) = self.type_line.as_ref() else {
-            return vec![(supertype, main_types, subtypes)];
+            return (supertype, main_types, subtypes);
         };
 
         // Don't care about tokens
         if type_line.contains("Token") {
-            return vec![(supertype, main_types, subtypes)];
+            return (supertype, main_types, subtypes);
         }
 
         let has_supertype = |phrase: &str| {
@@ -199,7 +199,7 @@ impl<'a> ScryfallCard<'a> {
             }
         };
 
-        vec![(supertype, main_types, subtypes)]
+        (supertype, main_types, subtypes)
     }
 
     pub fn contains_game(&self, game: &str) -> bool {
@@ -281,23 +281,6 @@ pub async fn download_latest<'a>() -> Result<Vec<ScryfallCard<'a>>> {
     };
 
     Ok(cards)
-}
-
-#[macro_export]
-macro_rules! colors_as_u8 {
-    ($card:expr, $field:ident) => {
-        if let Some(ref values) = $card.$field {
-            let mut value: u8 = 0;
-            for color in values.iter() {
-                let color = crate::scryfall::Color::from_str(color);
-                value += color as u8;
-            }
-
-            Some(value)
-        } else {
-            None
-        }
-    };
 }
 
 #[cfg(test)]
