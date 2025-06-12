@@ -88,20 +88,16 @@ pub(crate) enum Color {
 }
 
 impl Color {
-    pub(crate) fn as_u8(&self) -> u8 {
-        *self as u8
-    }
-
-    pub(crate) fn from_char(ch: char) -> Self {
-        match ch {
-            'C' => Self::Colorless,
-            'W' => Self::White,
-            'U' => Self::Blue,
-            'B' => Self::Black,
-            'R' => Self::Red,
-            'G' => Self::Green,
-            'T' => Self::Tap,
-            _ => panic!("unexpected char for color: {ch}"),
+    pub(crate) fn from_str(color: &Cow<'_, str>) -> Self {
+        match color.trim() {
+            "C" => Self::Colorless,
+            "W" => Self::White,
+            "U" => Self::Blue,
+            "B" => Self::Black,
+            "R" => Self::Red,
+            "G" => Self::Green,
+            "T" => Self::Tap,
+            _ => panic!("unexpected char for color: {color}"),
         }
     }
 }
@@ -288,11 +284,18 @@ pub async fn download_latest<'a>() -> Result<Vec<ScryfallCard<'a>>> {
 }
 
 #[macro_export]
-macro_rules! card_vec_field_to_string {
-    ($item:expr, $field:ident) => {
-        match &$item.$field {
-            Some(v) => Some(v.join(",")),
-            None => None,
+macro_rules! colors_as_u8 {
+    ($card:expr, $field:ident) => {
+        if let Some(ref values) = $card.$field {
+            let mut value: u8 = 0;
+            for color in values.iter() {
+                let color = crate::scryfall::Color::from_str(color);
+                value += color as u8;
+            }
+
+            Some(value)
+        } else {
+            None
         }
     };
 }
