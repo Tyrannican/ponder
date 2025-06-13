@@ -17,7 +17,12 @@ macro_rules! insert_image {
                 .bind(&uri)
                 .execute($txn.as_mut())
                 .await
-                .with_context(|| format!("inserting image uri - {uri} {}", $card.name))?;
+                .with_context(|| {
+                    format!(
+                        "inserting image uri - {uri} {}",
+                        $card.name.as_ref().unwrap()
+                    )
+                })?;
         }
     };
 }
@@ -65,6 +70,15 @@ impl<'a> DatabaseUpdater<'a> {
     pub async fn update(&self) -> Result<()> {
         println!("Updating Database...");
         let cards = download_latest().await?;
+        for card in cards.iter() {
+            if let Some(ref faces) = card.card_faces {
+                for face in faces {
+                    println!("{face:?}\n");
+                }
+            }
+        }
+
+        return Ok(());
         let mut txn = self.pool.begin().await?;
 
         self.add_formats(&mut txn).await?;
@@ -293,7 +307,7 @@ impl<'a> DatabaseUpdater<'a> {
             .with_context(|| {
                 format!(
                     "insert {} into database - {}",
-                    card.name,
+                    card.name.as_ref().unwrap(),
                     card.id.as_ref().unwrap()
                 )
             })?;
@@ -323,8 +337,12 @@ impl<'a> DatabaseUpdater<'a> {
                 .await
                 .with_context(|| {
                     format!(
-                        "inserting legality {:?} ({}) {} ({}) {}\n{card:?}",
-                        card.id, card.name, format_id, format, legality
+                        "inserting legality {} ({}) {} ({}) {}\n{card:?}",
+                        card.id.as_ref().unwrap(),
+                        card.name.as_ref().unwrap(),
+                        format_id,
+                        format,
+                        legality
                     )
                 })?;
             }
@@ -364,7 +382,12 @@ impl<'a> DatabaseUpdater<'a> {
                 .bind(keyword_id)
                 .execute(txn.as_mut())
                 .await
-                .with_context(|| format!("inserting card and keyword - {} {keyword}", card.name))?;
+                .with_context(|| {
+                    format!(
+                        "inserting card and keyword - {} {keyword}",
+                        card.name.as_ref().unwrap()
+                    )
+                })?;
             }
         }
 
@@ -400,7 +423,13 @@ impl<'a> DatabaseUpdater<'a> {
                 .bind(supertype)
                 .execute(txn.as_mut())
                 .await
-                .with_context(|| format!("inserting supertype - {} {}", card.name, supertype))?;
+                .with_context(|| {
+                    format!(
+                        "inserting supertype - {} {}",
+                        card.name.as_ref().unwrap(),
+                        supertype
+                    )
+                })?;
         }
 
         if let Some(card_types) = card_types {
@@ -410,7 +439,9 @@ impl<'a> DatabaseUpdater<'a> {
                     .bind(ct)
                     .execute(txn.as_mut())
                     .await
-                    .with_context(|| format!("inserting type - {} {}", card.name, ct))?;
+                    .with_context(|| {
+                        format!("inserting type - {} {}", card.name.as_ref().unwrap(), ct)
+                    })?;
             }
         }
 
@@ -421,7 +452,9 @@ impl<'a> DatabaseUpdater<'a> {
                     .bind(st)
                     .execute(txn.as_mut())
                     .await
-                    .with_context(|| format!("inserting subtype - {} {}", card.name, st))?;
+                    .with_context(|| {
+                        format!("inserting subtype - {} {}", card.name.as_ref().unwrap(), st)
+                    })?;
             }
         }
 

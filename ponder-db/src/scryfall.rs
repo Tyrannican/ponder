@@ -16,7 +16,7 @@ struct BulkEntry {
     url: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub(crate) struct ImageUris<'a> {
     pub(crate) art_crop: Option<Cow<'a, str>>,
     pub(crate) png: Option<Cow<'a, str>>,
@@ -102,11 +102,27 @@ impl Color {
     }
 }
 
+macro_rules! fill_card_face_field {
+    ($child:expr, $parent:expr, $field:ident) => {
+        if $child.$field.is_none() {
+            $child.$field = $parent.$field.clone();
+        }
+    };
+}
+
+macro_rules! fill_card_face_fields {
+    ($child:expr, $parent:expr, [$( $field:ident),* $(,)?]) => {
+        $(
+            fill_card_face_field!($child, $parent, $field);
+        )*
+    };
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ScryfallCard<'a> {
     pub(crate) id: Option<Cow<'a, str>>,
-    pub(crate) object: Cow<'a, str>,
-    pub(crate) name: Cow<'a, str>,
+    pub(crate) object: Option<Cow<'a, str>>,
+    pub(crate) name: Option<Cow<'a, str>>,
     pub(crate) color_indicator: Option<Vec<Cow<'a, str>>>,
     pub(crate) loyalty: Option<Cow<'a, str>>,
     pub(crate) legalities: Option<BTreeMap<Format, Legality>>,
@@ -208,6 +224,65 @@ impl<'a> ScryfallCard<'a> {
             None => false,
         }
     }
+
+    pub fn populate_card_faces(&mut self) {
+        if let Some(faces) = &mut self.card_faces {
+            for face in faces.iter_mut() {
+                fill_card_face_fields!(
+                    face,
+                    self,
+                    [
+                        id,
+                        object,
+                        name,
+                        color_indicator,
+                        loyalty,
+                        legalities,
+                        artist,
+                        oracle_id,
+                        type_line,
+                        defense,
+                        lang,
+                        content_warning,
+                        cmc,
+                        image_status,
+                        flavor_text,
+                        arena_id,
+                        illustration_id,
+                        oracle_text,
+                        colors,
+                        color_identity,
+                        produced_mana,
+                        rarity,
+                        power,
+                        set_name,
+                        penny_rank,
+                        variation,
+                        set_id,
+                        toughness,
+                        mtgo_id,
+                        booster,
+                        border_color,
+                        foil,
+                        set_type,
+                        nonfoil,
+                        game_changer,
+                        reprint,
+                        layout,
+                        reserved,
+                        digital,
+                        set,
+                        keywords,
+                        highres_image,
+                        mana_cost,
+                        image_uris,
+                        games,
+                        promo,
+                    ]
+                );
+            }
+        }
+    }
 }
 
 async fn download_data<T: serde::de::DeserializeOwned>(url: &str) -> Result<T> {
@@ -266,14 +341,25 @@ pub async fn download_latest<'a>() -> Result<Vec<ScryfallCard<'a>>> {
     // TODO: Temp
     let card_file = PathBuf::from("cards.json");
     let cards = if card_file.exists() {
-        serde_json::from_str(&std::fs::read_to_string(&card_file)?)?
+        let mut cards: Vec<ScryfallCard> =
+            serde_json::from_str(&std::fs::read_to_string(&card_file)?)?;
+        for card in cards.iter_mut() {
+            card.populate_card_faces();
+        }
+
+        cards
     } else {
         let bulk: BulkData = download_data::<BulkData>(URL).await?;
         let data = download_data::<Vec<ScryfallCard>>(&bulk.data[0].url).await?;
-        let cards = data
+        let mut cards = data
             .into_iter()
             .filter(card_filter)
             .collect::<Vec<ScryfallCard>>();
+
+        for card in cards.iter_mut() {
+            card.populate_card_faces();
+        }
+
         let out_str = serde_json::to_string_pretty(&cards)?;
         tokio::fs::write(&card_file, out_str).await?;
 
