@@ -1,5 +1,6 @@
 create table if not exists card (
-    id text not null primary key,
+    card_id integer primary key,
+    id text not null,
     object text not null,
     name text not null,
     color_indicator text,
@@ -53,7 +54,7 @@ create table if not exists images (
     image_type_id integer not null,
     uri text not null,
     primary key (card_id, image_type_id),
-    foreign key (card_id) references card(id),
+    foreign key (card_id) references card(uid),
     foreign key (image_type_id) references image_type(id)
 );
 
@@ -85,7 +86,7 @@ create table if not exists legality (
     format_id integer not null,
     status text not null check (status in ('legal', 'banned', 'restricted', 'not_legal')),
     primary key (card_id, format_id),
-    foreign key (card_id) references card(id),
+    foreign key (card_id) references card(uid),
     foreign key (format_id) references format(id)
 );
 
@@ -98,27 +99,27 @@ create table if not exists card_keywords (
     card_id text not null,
     keyword_id integer not null,
     primary key (card_id, keyword_id),
-    foreign key (card_id) references card(id),
+    foreign key (card_id) references card(uid),
     foreign key (keyword_id) references keyword(id)
 );
 
+create index if not exists idx_card_id_text on card(id);
 create index if not exists idx_card_name on card(name);
 create index if not exists idx_card_set_id on card(set_id);
-create index if not exists idx_card_rarity on card(rarity);
-create index if not exists idx_card_oracle_id on card(oracle_id);
+create index if not exists idx_card_set_short on card(set_short);
 create index if not exists idx_card_colors on card(colors);
+create index if not exists idx_card_rarity on card(rarity);
+create index if not exists idx_card_type_line on card(type_line);
 create index if not exists idx_card_color_identity on card(color_identity);
 create index if not exists idx_card_converted_mana_cost on card(converted_mana_cost);
+create index if not exists idx_card_mana_cost on card(mana_cost);
+create index if not exists idx_card_loyalty on card(loyalty);
 create index if not exists idx_card_power on card(power);
 create index if not exists idx_card_toughness on card(toughness);
-create index if not exists idx_card_arena on card(arena);
-create index if not exists idx_card_mtgo on card(mtgo);
-create index if not exists idx_card_paper on card(paper);
-create index if not exists idx_card_supertype_type on card_supertype(supertype);
-create index if not exists idx_card_type_type on card_type(type);
-create index if not exists idx_card_subtype_type on card_subtype(subtype);
+create index if not exists idx_card_set_name on card(set_name);
+create index if not exists idx_supertype_name on card_supertype(supertype);
+create index if not exists idx_type_name on card_type(type);
+create index if not exists idx_subtype_name on card_subtype(subtype);
 create index if not exists idx_legality_format_status on legality(format_id, status);
-create index if not exists idx_legality_status on legality(status);
+create index if not exists idx_legality_card_status on legality(card_id, status);
 create index if not exists idx_card_keywords_keyword on card_keywords(keyword_id);
-create index if not exists idx_card_cmc_types on card(converted_mana_cost, set_id);
-create index if not exists idx_card_set_rarity on card(set_id, rarity);

@@ -70,15 +70,6 @@ impl<'a> DatabaseUpdater<'a> {
     pub async fn update(&self) -> Result<()> {
         println!("Updating Database...");
         let cards = download_latest().await?;
-        for card in cards.iter() {
-            if let Some(ref faces) = card.card_faces {
-                for face in faces {
-                    println!("{face:?}\n");
-                }
-            }
-        }
-
-        return Ok(());
         let mut txn = self.pool.begin().await?;
 
         self.add_formats(&mut txn).await?;
@@ -327,10 +318,16 @@ impl<'a> DatabaseUpdater<'a> {
                     .fetch_one(txn.as_mut())
                     .await?;
 
+                // TODO: Fix up the rest so they use uid - in one query
+                let card_id: i64 = sqlx::query_scalar("select uid from card where id = ?")
+                    .bind(&card.id)
+                    .fetch_one(txn.as_mut())
+                    .await?;
+
                 sqlx::query(
                     "insert or ignore into legality(card_id, format_id, status) values(?, ?, ?)",
                 )
-                .bind(&card.id)
+                .bind(&card_id)
                 .bind(&format_id)
                 .bind(&legality.to_string())
                 .execute(txn.as_mut())
