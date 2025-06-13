@@ -38,6 +38,19 @@ macro_rules! colors_as_u8 {
     };
 }
 
+macro_rules! string_to_integer {
+    ($card:expr, $field:ident) => {
+        if let Some(ref value) = $card.$field {
+            match value.parse::<i32>() {
+                Ok(v) => Some(v),
+                Err(_) => None,
+            }
+        } else {
+            None
+        }
+    };
+}
+
 #[derive(Debug, Clone)]
 pub struct DatabaseUpdater<'a> {
     pool: &'a SqlitePool,
@@ -253,8 +266,8 @@ impl<'a> DatabaseUpdater<'a> {
             .bind(colors_as_u8!(card, colors))
             .bind(colors_as_u8!(card, color_identity))
             .bind(&card.rarity)
-            .bind(&card.power)
-            .bind(&card.toughness)
+            .bind(string_to_integer!(card, power))
+            .bind(string_to_integer!(card, toughness))
             .bind(&card.set_name)
             .bind(&card.set_id)
             .bind(&card.set_type)
