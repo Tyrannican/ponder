@@ -1,6 +1,6 @@
 create table if not exists card (
-    card_id integer primary key,
-    id text not null,
+    id integer primary key,
+    card_id text not null,
     object text not null,
     name text not null,
     color_indicator text,
@@ -54,7 +54,7 @@ create table if not exists images (
     image_type_id integer not null,
     uri text not null,
     primary key (card_id, image_type_id),
-    foreign key (card_id) references card(uid),
+    foreign key (card_id) references card(id),
     foreign key (image_type_id) references image_type(id)
 );
 
@@ -86,7 +86,7 @@ create table if not exists legality (
     format_id integer not null,
     status text not null check (status in ('legal', 'banned', 'restricted', 'not_legal')),
     primary key (card_id, format_id),
-    foreign key (card_id) references card(uid),
+    foreign key (card_id) references card(id),
     foreign key (format_id) references format(id)
 );
 
@@ -99,11 +99,11 @@ create table if not exists card_keywords (
     card_id text not null,
     keyword_id integer not null,
     primary key (card_id, keyword_id),
-    foreign key (card_id) references card(uid),
+    foreign key (card_id) references card(id),
     foreign key (keyword_id) references keyword(id)
 );
 
-create index if not exists idx_card_id_text on card(id);
+create index if not exists idx_card_id_text on card(card_id);
 create index if not exists idx_card_name on card(name);
 create index if not exists idx_card_set_id on card(set_id);
 create index if not exists idx_card_set_short on card(set_short);

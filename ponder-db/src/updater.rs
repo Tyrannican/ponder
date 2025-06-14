@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use sqlx::{Row, SqliteTransaction, sqlite::SqlitePool};
 
 macro_rules! insert_image {
-    ($card:expr, $txn:expr, $images:expr, $field:ident) => {
+    ($card:expr, $txn:expr, $images:expr, $field:ident, $card_id:expr) => {
         if let Some(ref uri) = $images.$field {
             let img_id: i64 = sqlx::query_scalar("select id from image_type where name = ?")
                 .bind(stringify!($field))
@@ -12,7 +12,7 @@ macro_rules! insert_image {
                 .with_context(|| format!("fetching id for {} image_type", stringify!($field)))?;
 
             sqlx::query("insert or ignore into images(card_id,image_type_id,uri) values(?, ?, ?)")
-                .bind(&$card.id)
+                .bind($card_id)
                 .bind(img_id)
                 .bind(&uri)
                 .execute($txn.as_mut())
@@ -70,40 +70,33 @@ impl<'a> DatabaseUpdater<'a> {
     pub async fn update(&self) -> Result<()> {
         println!("Updating Database...");
         let cards = download_latest().await?;
-        let mut txn = self.pool.begin().await?;
 
+        let mut txn = self.pool.begin().await?;
         self.add_formats(&mut txn).await?;
         self.add_image_types(&mut txn).await?;
-
-        for card in cards.iter() {
-            if let Some(ref faces) = card.card_faces {
-                for face in faces.iter() {
-                    self.update_single(face, &mut txn).await?;
-                }
-            } else {
-                self.add_card(&card, &mut txn).await?;
-                self.add_legalities(&card, &mut txn).await?;
-                self.add_keywords(&card, &mut txn).await?;
-                self.add_images(&card, &mut txn).await?;
-                self.add_card_types(&card, &mut txn).await?;
-            }
-        }
-
         txn.commit().await?;
 
-        Ok(())
-    }
-
-    async fn update_single(
-        &self,
-        card: &ScryfallCard<'_>,
-        txn: &mut SqliteTransaction<'_>,
-    ) -> Result<()> {
-        self.add_card(&card, txn).await?;
-        self.add_legalities(&card, txn).await?;
-        self.add_keywords(&card, txn).await?;
-        self.add_images(&card, txn).await?;
-        self.add_card_types(&card, txn).await?;
+        for batch in cards.chunks(1000) {
+            let mut txn = self.pool.begin().await?;
+            for card in batch.iter() {
+                if let Some(ref faces) = card.card_faces {
+                    for face in faces.iter() {
+                        self.add_card(&face, &mut txn).await?;
+                        self.add_legalities(&face, &mut txn).await?;
+                        self.add_keywords(&face, &mut txn).await?;
+                        self.add_images(&face, &mut txn).await?;
+                        self.add_card_types(&face, &mut txn).await?;
+                    }
+                } else {
+                    self.add_card(&card, &mut txn).await?;
+                    self.add_legalities(&card, &mut txn).await?;
+                    self.add_keywords(&card, &mut txn).await?;
+                    self.add_images(&card, &mut txn).await?;
+                    self.add_card_types(&card, &mut txn).await?;
+                }
+            }
+            txn.commit().await?;
+        }
 
         Ok(())
     }
@@ -162,7 +155,7 @@ impl<'a> DatabaseUpdater<'a> {
     ) -> Result<()> {
         let query = r#"
             insert or ignore into card(
-                id,
+                card_id,
                 object,
                 name,
                 color_indicator,
@@ -313,22 +306,19 @@ impl<'a> DatabaseUpdater<'a> {
     ) -> Result<()> {
         if let Some(legalities) = &card.legalities {
             for (format, legality) in legalities.iter() {
-                let format_id: i64 = sqlx::query_scalar("select id from format where name = ?")
-                    .bind(&format.to_string())
-                    .fetch_one(txn.as_mut())
-                    .await?;
-
-                // TODO: Fix up the rest so they use uid - in one query
-                let card_id: i64 = sqlx::query_scalar("select uid from card where id = ?")
-                    .bind(&card.id)
-                    .fetch_one(txn.as_mut())
-                    .await?;
+                let (format_id, card_id): (i64, i64) = sqlx::query_as(
+                    "select f.id, c.id from format f, card c where f.name = ? and c.card_id = ?",
+                )
+                .bind(&format.to_string())
+                .bind(&card.id)
+                .fetch_one(txn.as_mut())
+                .await?;
 
                 sqlx::query(
                     "insert or ignore into legality(card_id, format_id, status) values(?, ?, ?)",
                 )
-                .bind(&card_id)
-                .bind(&format_id)
+                .bind(card_id)
+                .bind(format_id)
                 .bind(&legality.to_string())
                 .execute(txn.as_mut())
                 .await
@@ -353,6 +343,17 @@ impl<'a> DatabaseUpdater<'a> {
         card: &ScryfallCard<'_>,
         txn: &mut SqliteTransaction<'_>,
     ) -> Result<()> {
+        let card_id: i64 = sqlx::query_scalar("select id from card where card_id = ?")
+            .bind(&card.id)
+            .fetch_one(txn.as_mut())
+            .await
+            .with_context(|| {
+                format!(
+                    "fetching card id (keyword) - {}",
+                    card.name.as_ref().unwrap()
+                )
+            })?;
+
         if let Some(ref keywords) = card.keywords {
             for keyword in keywords.iter() {
                 let row = sqlx::query(
@@ -375,7 +376,7 @@ impl<'a> DatabaseUpdater<'a> {
                 sqlx::query(
                     "insert or ignore into card_keywords(card_id, keyword_id) values(?, ?)",
                 )
-                .bind(&card.id)
+                .bind(card_id)
                 .bind(keyword_id)
                 .execute(txn.as_mut())
                 .await
@@ -396,13 +397,24 @@ impl<'a> DatabaseUpdater<'a> {
         card: &ScryfallCard<'_>,
         txn: &mut SqliteTransaction<'_>,
     ) -> Result<()> {
+        let card_id: i64 = sqlx::query_scalar("select id from card where card_id = ?")
+            .bind(&card.id)
+            .fetch_one(txn.as_mut())
+            .await
+            .with_context(|| {
+                format!(
+                    "fetching card id for images - {}",
+                    card.name.as_ref().unwrap()
+                )
+            })?;
+
         if let Some(ref images) = card.image_uris {
-            insert_image!(&card, txn, images, art_crop);
-            insert_image!(&card, txn, images, png);
-            insert_image!(&card, txn, images, normal);
-            insert_image!(&card, txn, images, large);
-            insert_image!(&card, txn, images, small);
-            insert_image!(&card, txn, images, border_crop);
+            insert_image!(&card, txn, images, art_crop, card_id);
+            insert_image!(&card, txn, images, png, card_id);
+            insert_image!(&card, txn, images, normal, card_id);
+            insert_image!(&card, txn, images, large, card_id);
+            insert_image!(&card, txn, images, small, card_id);
+            insert_image!(&card, txn, images, border_crop, card_id);
         }
         Ok(())
     }
@@ -414,9 +426,20 @@ impl<'a> DatabaseUpdater<'a> {
     ) -> Result<()> {
         let (supertype, card_types, subtypes) = card.extract_types();
 
+        let card_id: i64 = sqlx::query_scalar("select id from card where card_id = ?")
+            .bind(&card.id)
+            .fetch_one(txn.as_mut())
+            .await
+            .with_context(|| {
+                format!(
+                    "fetching card id (supertype) - {}",
+                    card.name.as_ref().unwrap()
+                )
+            })?;
+
         if let Some(supertype) = supertype {
             sqlx::query("insert or ignore into card_supertype(card_id, supertype) values(?, ?)")
-                .bind(&card.id)
+                .bind(card_id)
                 .bind(supertype)
                 .execute(txn.as_mut())
                 .await
@@ -432,7 +455,7 @@ impl<'a> DatabaseUpdater<'a> {
         if let Some(card_types) = card_types {
             for ct in card_types {
                 sqlx::query("insert or ignore into card_type(card_id, type) values(?, ?)")
-                    .bind(&card.id)
+                    .bind(card_id)
                     .bind(ct)
                     .execute(txn.as_mut())
                     .await
@@ -445,7 +468,7 @@ impl<'a> DatabaseUpdater<'a> {
         if let Some(subtypes) = subtypes {
             for st in subtypes {
                 sqlx::query("insert or ignore into card_subtype(card_id, subtype) values(?, ?)")
-                    .bind(&card.id)
+                    .bind(card_id)
                     .bind(st)
                     .execute(txn.as_mut())
                     .await
