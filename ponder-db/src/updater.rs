@@ -32,7 +32,7 @@ macro_rules! colors_as_u8 {
         if let Some(ref values) = $card.$field {
             let mut value: u8 = 0;
             for color in values.iter() {
-                let color = crate::scryfall::Color::from_str(color);
+                let color = crate::scryfall::Color::from(color.trim().chars().nth(0).unwrap());
                 value += color as u8;
             }
 

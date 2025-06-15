@@ -87,17 +87,17 @@ pub(crate) enum Color {
     Tap = 32, // Only ONE card has this and it's an Unfinity card
 }
 
-impl Color {
-    pub(crate) fn from_str(color: &Cow<'_, str>) -> Self {
-        match color.trim() {
-            "C" => Self::Colorless,
-            "W" => Self::White,
-            "U" => Self::Blue,
-            "B" => Self::Black,
-            "R" => Self::Red,
-            "G" => Self::Green,
-            "T" => Self::Tap,
-            _ => panic!("unexpected char for color: {color}"),
+impl From<char> for Color {
+    fn from(value: char) -> Self {
+        match value {
+            'C' => Self::Colorless,
+            'W' => Self::White,
+            'U' => Self::Blue,
+            'B' => Self::Black,
+            'R' => Self::Red,
+            'G' => Self::Green,
+            'T' => Self::Tap,
+            _ => panic!("unexpected char for color: '{value}'"),
         }
     }
 }

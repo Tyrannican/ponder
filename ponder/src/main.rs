@@ -12,6 +12,8 @@ use ratatui::{
     widgets::{Block, List, ListItem, Paragraph},
 };
 
+mod tui;
+
 #[derive(Debug)]
 pub struct Ponder {
     pub workspace: PathBuf,
@@ -34,7 +36,7 @@ impl Ponder {
         })
     }
 
-    pub async fn run(&mut self, mut term: DefaultTerminal) -> Result<()> {
+    pub async fn run(&mut self, term: &mut DefaultTerminal) -> Result<()> {
         loop {
             term.draw(|frame| self.draw(frame))?;
             if let Event::Key(key) = event::read()? {
@@ -167,8 +169,15 @@ impl Ponder {
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut state = Ponder::new().await?;
-    let terminal = ratatui::init();
-    state.run(terminal).await?;
+    let mut terminal = ratatui::init();
+    match state.run(&mut terminal).await {
+        Ok(_) => {}
+        Err(e) => {
+            terminal.clear()?;
+            ratatui::restore();
+            println!("{e:?}");
+        }
+    }
     ratatui::restore();
 
     Ok(())
