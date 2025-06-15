@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use card::Card;
 use scryfall::ScryfallCard;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 
@@ -7,7 +8,7 @@ use std::{
     str::FromStr,
 };
 
-mod card;
+pub mod card;
 mod scryfall;
 mod updater;
 
@@ -49,5 +50,16 @@ impl SqliteStore {
 
     pub async fn update(&self) -> Result<()> {
         DatabaseUpdater::new(&self.pool).update().await
+    }
+
+    pub async fn query_card_by_name<'a>(&self, name: &str) -> Result<Vec<Card>> {
+        let test = format!("%{name}%");
+        let results: Vec<Card> = sqlx::query_as("select distinct * from card where name like ?")
+            .bind(&test)
+            .fetch_all(&self.pool)
+            .await
+            .with_context(|| format!("fetching card by name - {name}"))?;
+
+        Ok(results)
     }
 }

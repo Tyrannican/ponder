@@ -68,7 +68,6 @@ impl<'a> DatabaseUpdater<'a> {
     }
 
     pub async fn update(&self) -> Result<()> {
-        println!("Updating Database...");
         let cards = download_latest().await?;
 
         let mut txn = self.pool.begin().await?;
@@ -249,7 +248,7 @@ impl<'a> DatabaseUpdater<'a> {
             .bind(&card.name)
             .bind(colors_as_u8!(card, color_indicator))
             .bind(colors_as_u8!(card, produced_mana))
-            .bind(&card.loyalty)
+            .bind(string_to_integer!(card, loyalty))
             .bind(&card.artist)
             .bind(&card.oracle_id)
             .bind(&card.type_line)
