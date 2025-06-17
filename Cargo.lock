@@ -1432,6 +1432,8 @@ dependencies = [
  "dotstore",
  "ponder-db",
  "ratatui",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 

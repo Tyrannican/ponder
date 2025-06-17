@@ -8,7 +8,7 @@ use std::{
 };
 
 pub mod card;
-mod scryfall;
+pub mod scryfall;
 mod updater;
 
 use updater::DatabaseUpdater;
@@ -49,6 +49,10 @@ impl SqliteStore {
 
     pub async fn update(&self) -> Result<()> {
         DatabaseUpdater::new(&self.pool).update().await
+    }
+
+    pub async fn load_decks(&self) -> Result<Vec<()>> {
+        Ok(vec![])
     }
 
     pub async fn query_card_by_name<'a>(&self, name: &str) -> Result<Vec<Card>> {

@@ -8,6 +8,7 @@ use ratatui::{
 };
 
 use crate::Ponder;
+use crate::data::Deck;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum AppState {
@@ -23,7 +24,7 @@ pub(crate) enum AppMode {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum EventResult {
-    Normal,
+    Render,
     Quit,
 }
 
@@ -35,18 +36,22 @@ pub(crate) trait Component {
 
 #[derive(Debug)]
 pub struct MainScreen<'a> {
-    access: &'a Ponder,
+    app: &'a Ponder,
     mode: AppMode,
-    input_field: String,
+    decks: Vec<Deck>,
 }
 
 impl<'a> MainScreen<'a> {
     pub fn new(ponder: &'a Ponder) -> Self {
         Self {
-            access: ponder,
+            app: ponder,
             mode: AppMode::Normal,
-            input_field: String::new(),
+            decks: Vec::new(),
         }
+    }
+
+    pub fn load_all_decks(&self) -> Result<()> {
+        //
     }
 }
 
@@ -59,14 +64,14 @@ impl<'a> Component for MainScreen<'a> {
             let result = match self.mode {
                 AppMode::Normal => match key.code {
                     KeyCode::Esc => Ok(EventResult::Quit),
-                    _ => Ok(EventResult::Normal),
+                    _ => Ok(EventResult::Render),
                 },
-                AppMode::Editing => Ok(EventResult::Normal),
+                AppMode::Editing => Ok(EventResult::Render),
             };
 
             result
         } else {
-            Ok(EventResult::Normal)
+            Ok(EventResult::Render)
         }
     }
 }

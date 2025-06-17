@@ -28,7 +28,7 @@ pub(crate) struct ImageUris<'a> {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
-pub(crate) enum Format {
+pub enum Format {
     Standard,
     Future,
     Historic,
@@ -62,7 +62,7 @@ impl std::fmt::Display for Format {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum Legality {
+pub enum Legality {
     Legal,
     NotLegal,
     Banned,
@@ -77,7 +77,7 @@ impl std::fmt::Display for Legality {
 }
 
 #[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum Color {
+pub enum Color {
     Colorless = 0,
     White = 1,
     Blue = 2,

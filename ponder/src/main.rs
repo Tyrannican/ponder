@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use dotstore;
 use ponder_db::SqliteStore;
 
+mod data;
 mod tui;
 use tui::Tui;
 
