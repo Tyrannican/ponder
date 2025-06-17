@@ -29,7 +29,7 @@ impl Ponder {
 #[tokio::main]
 async fn main() -> Result<()> {
     let ponder = Ponder::new().await?;
-    let mut tui = Tui::new(ponder);
+    let mut tui = Tui::new(&ponder);
     if let Err(e) = tui.run().await {
         drop(tui);
         eprintln!("{e:#?}");

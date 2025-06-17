@@ -1,7 +1,10 @@
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use ratatui::{
     DefaultTerminal, Frame,
     crossterm::event::{self, Event, KeyCode, KeyModifiers},
+    layout::*,
+    widgets::{Block, Borders, Paragraph},
 };
 
 use crate::Ponder;
@@ -12,49 +15,85 @@ pub(crate) enum AppState {
     DeckEdit,
 }
 
-#[derive(Debug)]
-pub struct Tui {
-    ponder: Ponder,
-    state: AppState,
-    terminal: DefaultTerminal,
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub(crate) enum AppMode {
+    Normal,
+    Editing,
 }
 
-impl Tui {
-    pub fn new(store: Ponder) -> Self {
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub(crate) enum EventResult {
+    Normal,
+    Quit,
+}
+
+#[async_trait]
+pub(crate) trait Component {
+    fn render(&mut self, frame: &mut Frame);
+    async fn handle_event(&mut self, event: ()) -> Result<EventResult>;
+}
+
+#[derive(Debug)]
+pub struct MainScreen<'a> {
+    access: &'a Ponder,
+    mode: AppMode,
+    input_field: String,
+}
+
+impl<'a> MainScreen<'a> {
+    pub fn new(ponder: &'a Ponder) -> Self {
         Self {
-            ponder: store,
-            state: AppState::MainScreen,
-            terminal: ratatui::init(),
+            access: ponder,
+            mode: AppMode::Normal,
+            input_field: String::new(),
         }
     }
+}
 
-    pub fn draw(&self) {
-        // Get a Layout depending on State
-        // Render it
+#[async_trait]
+impl<'a> Component for MainScreen<'a> {
+    fn render(&mut self, frame: &mut Frame) {}
+
+    async fn handle_event(&mut self, event: ()) -> Result<EventResult> {
+        if let Event::Key(key) = event::read()? {
+            let result = match self.mode {
+                AppMode::Normal => match key.code {
+                    KeyCode::Esc => Ok(EventResult::Quit),
+                    _ => Ok(EventResult::Normal),
+                },
+                AppMode::Editing => Ok(EventResult::Normal),
+            };
+
+            result
+        } else {
+            Ok(EventResult::Normal)
+        }
     }
+}
 
-    pub async fn parse_input(&mut self) -> Result<bool> {
-        Ok(false)
+#[derive(Debug)]
+pub struct Tui<'a> {
+    state: AppState,
+    terminal: DefaultTerminal,
+
+    main_state: MainScreen<'a>,
+}
+
+impl<'a> Tui<'a> {
+    pub fn new(store: &'a Ponder) -> Self {
+        Self {
+            state: AppState::MainScreen,
+            terminal: ratatui::init(),
+            main_state: MainScreen::new(&store),
+        }
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        loop {
-            self.draw();
-            match self.parse_input().await {
-                Ok(quit) => {
-                    if quit {
-                        break;
-                    }
-                }
-                Err(e) => return Err(e),
-            }
-        }
-
         Ok(())
     }
 }
 
-impl Drop for Tui {
+impl<'a> Drop for Tui<'a> {
     fn drop(&mut self) {
         let _ = self
             .terminal
